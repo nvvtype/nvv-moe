@@ -1,15 +1,13 @@
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+box-sizing: border-box;
 }
 
 @font-face
 {
-    font-family:'haxrcorp';
-    src: url('ttf/haxrcorpttf.ttf');
+  font-family:'haxrcorp';
+  src: url('ttf/haxrcorpttf.ttf');
 }
 
 body {
@@ -18,9 +16,9 @@ body {
   font-family: 'Roboto', sans-serif;
   background-color: #000;
   color: #E0E0E1;
-  background-image: 
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 1)),
-    url("../img/background.jpg");
+  background-image:
+  linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 1)),
+  url("../img/background.jpg");
   background-position: center top;
   background-repeat: no-repeat;
   background-size: cover;
@@ -37,22 +35,13 @@ h4,
 h5,
 h6 {
   font-family: Helvetica, Arial, sans-serif;
-  margin-top: 25px;
-  margin-bottom: 10px;
-}
-
-p {
-  margin-top: 10px;
-  margin-bottom: 0;
-  margin-left: 0;
-  margin-right: 0;
 }
 
 .container {
   min-height: 75vh;
   max-width: 75vw;
   margin-left: 10vw;
-  margin-top: 2vh;
+  margin-top: 1vh;
 }
 
 .reddit-text {
@@ -60,74 +49,33 @@ p {
 }
 
 /*--------------------------
-
-      MAIN BODY STUFF
-
---------------------------*/
+ *
+ *     MAIN BODY STUFF
+ *
+ - *-------------------------*/
 
 .content {
-  margin-top: 10px;
+  margin-top: 5px;
   margin-left: 50px;
-  margin-bottom: 10vw;
   border: rgb(0,120,200);
   border-style: inset;
   padding: 50px;
-  background-color: rgba(4,4,12,0.5);
+  background-color: rgb(4,4,12);
 }
 
 
 #name {
-  color: rgb(0, 160, 250);
-	font-family: haxrcorp, monospace;
-  font-size: 30px;
+color: rgb(0, 160, 250);
+font-family: haxrcorp, monospace;
+font-size: 30px;
 }
 
 #blue {
-  color: lightblue;
+color: lightblue;
 }
 
 #pink {
-  color:hotpink;
-}
-
-#site-links a {
-  display: inline-block;
-	font-family: haxrcorp, monospace;
-  font-style: none;
-  font-size: 25px;
-  max-width: 25vh;
-  color: white;
-  background-color: rgb(0,0,20);
-  border:rgb(40, 120, 200);
-  border-width: 2px;
-  border-style: solid;
-  padding: 10px;
-  color: rgb(0, 160, 250);
-  text-decoration: none;
-}
-
-#site-links a:hover {
-  text-decoration: underline;
-}
-
-#greenpills {
-  margin: 15px;
-  padding-top: 20px;
-}
-
-#greenpills li {
-  color: #3A5F41;
-  padding: 2px;
-}
-
-#flex {
-  display: flex;
-}
-
-#me {
-    width: 10vw;
-    height: 10vw;
-    border-radius: 50%;
+color:hotpink;
 }
 
 .funfacts {
@@ -140,43 +88,58 @@ p {
   color: #789922;
 }
 
-.recommendations ul {
-  list-style: none;
+.backup-email {
+  font-family: haxrcorp, monospace;
+  font-size: 20px;
+  color: rgb(0, 200, 255);
+  text-shadow:
+  0 0 5px rgba(0, 200, 255, 0.5),
+  0 0 10px rgba(0, 200, 255, 0.3);
+  background-color: rgba(0, 40, 80, 0.3);
+  padding: 4px 8px;
+  border-left: 3px solid rgb(0, 160, 250);
+  display: inline-block;
+  letter-spacing: 1px;
 }
 
-.list-item {
-  color: rgb(0,120,255);
+.backup-email .email-sep {
+  color: rgb(0, 120, 180);
+  opacity: 0.7;
+  font-size: 16px;
 }
 
-.description {
-  font-style: italic;
-  font-size: 12px;
+.backup-email .email-part {
+  color: rgb(0, 220, 255);
+  font-weight: bold;
 }
 
 
 /*--------------------------
-
-        HEADER STUFF
-
---------------------------*/
+ *
+ *       HEADER STUFF
+ *
+ - *-------------------------*/
 
 .header {
   margin-left: 50px;
+  margin-top: 25px;
   display: block;
 }
 
 .header h1 {
   color: rgb(0, 160, 250);
-	font-family: haxrcorp, monospace;
-  font-size: 35px;
-  margin-top: 0;
+  font-family: haxrcorp, monospace;
+  font-size: 40px;
+}
+
+.navlinks {
+  margin: 5px;
 }
 
 .greeting {
   font-size: 32px;
   color: rgb(0, 120, 255);
-	font-family: haxrcorp, monospace;
-	margin-top: 15px;
+  font-family: haxrcorp, monospace;
 }
 
 .navlinks ul {
@@ -188,7 +151,7 @@ p {
 
 .navlinks ul a {
   display: inline-block;
-	font-family: haxrcorp, monospace;
+  font-family: haxrcorp, monospace;
   font-style: none;
   font-size: 25px;
   max-width: 25vh;
@@ -212,20 +175,17 @@ p {
 
 
 /*--------------------------
-
-        FOOTER STUFF
-
---------------------------*/
+ *
+ *       FOOTER STUFF
+ *
+ - *-------------------------*/
 
 .footer {
-	font-family: haxrcorp, monospace;
+  font-family: haxrcorp, monospace;
   font-size: 18px;
-  position: fixed;
-  bottom: 0vh;
-  left: 1vw;
-  z-index: 1;
-  width: 100%;
-  background-color: black;
+  position: absolute;
+  bottom: 1vh;
+  left: 5vw;
 }
 
 .footer a {
@@ -241,15 +201,7 @@ p {
   position: fixed;
   bottom: 0vh;
   right: 1vw;
-  z-index: 2;
+  z-index: -1;
   max-height: 30vh;
   min-height: 20vh;
-}
-
-/* Add a media query for mobile devices */
-@media (max-width: 600px) { /* Adjust the max-width as needed for your design */
-  .mascot {
-    max-height: 15vh; /* Smaller height for mobile devices */
-    min-height: 10vh;
-  }
 }
