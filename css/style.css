@@ -139,7 +139,7 @@ color:hotpink;
 .greeting {
   font-size: 32px;
   color: rgb(0, 120, 255);
-  font-family: haxrcorp, monospace;
+  font-family: 'Noto Sans JP', 'Yu Gothic', 'Meiryo', sans-serif;
 }
 
 .navlinks ul {
