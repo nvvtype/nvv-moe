@@ -13,6 +13,5 @@ else if (hrs >= 17 && hrs <= 24){
     greet = 'こんばんは！';}
 
 
-
 document.getElementById('lblGreetings').innerHTML =
     '<b>' + greet + '</b>';

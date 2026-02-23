@@ -139,7 +139,7 @@ color:hotpink;
 .greeting {
   font-size: 32px;
   color: rgb(0, 120, 255);
-  font-family: 'Noto Sans JP', 'Yu Gothic', 'Meiryo', sans-serif;
+  font-family: haxrcorp, monospace;
 }
 
 .navlinks ul {
@@ -195,6 +195,48 @@ color:hotpink;
 
 .footer a:hover {
   text-decoration: underline;
+}
+
+.inline-link {
+  color: rgb(0, 160, 250);
+  text-decoration: none;
+  font-family: haxrcorp, monospace;
+}
+
+.inline-link:hover {
+  text-decoration: underline;
+  color: rgb(0, 220, 255);
+}
+
+.linklist {
+  list-style: none;
+  padding: 0;
+}
+
+.linklist li {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 120, 200, 0.2);
+}
+
+.linklist li:last-child {
+  border-bottom: none;
+}
+
+.linklist a {
+  font-family: haxrcorp, monospace;
+  font-size: 22px;
+  color: rgb(0, 160, 250);
+  text-decoration: none;
+}
+
+.linklist a:hover {
+  text-decoration: underline;
+  color: rgb(0, 220, 255);
+}
+
+.link-desc {
+  font-size: 14px;
+  color: #888;
 }
 
 .mascot {

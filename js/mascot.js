@@ -1,5 +1,20 @@
-window.addEventListener('load', function() {
+window.addEventListener('load', function () {
     var mascotImage = document.querySelector('.mascot');
-    var randomImageNumber = Math.floor(Math.random() * 84) + 1;
-    mascotImage.src = 'img/mascot/' + randomImageNumber + '.png';
+    if (!mascotImage) {
+        return;
+    }
+
+    var mascotFiles = Array.isArray(window.MASCOT_FILES) && window.MASCOT_FILES.length
+        ? window.MASCOT_FILES
+        : null;
+
+    var selectedFile;
+    if (mascotFiles) {
+        selectedFile = mascotFiles[Math.floor(Math.random() * mascotFiles.length)];
+    } else {
+        var fallbackCount = 84;
+        selectedFile = (Math.floor(Math.random() * fallbackCount) + 1) + '.png';
+    }
+
+    mascotImage.src = 'img/mascot/' + selectedFile;
 });
