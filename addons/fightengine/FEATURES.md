@@ -61,7 +61,7 @@ The kusoge design template gets its own section. These are the systems that make
 | Roman cancel / rapid cancel | 🎮 | `end_move()` + `meter.try_spend()` + `FightClock.hitstop()`; ~10 lines in a state |
 | Burst (BlazBlue) | 🎮 | Meter + a 360° `HitBox2D` + `intangible_frames`; all pieces exist |
 | Vampire Savior round flow (no round resets, carry health) | 🎮 | Skip `reset_for_round()`, keep fighting |
-| Assists / strikers (Marvel) | 🚧 | Planned with tag support |
+| Assists / strikers (Marvel) | ✅ | `TagTeam.call_assist()` + `assist_called` signal |
 | Dramatic super flash cinematics | ✅ | `FightClock.hitstop([opponent], frames)` freezes them mid-air |
 
 ## 2. Input (IKEMEN: command buffer, SOCD, button assist, ~~AI cheap inputs~~)
@@ -135,8 +135,10 @@ The kusoge design template gets its own section. These are the systems that make
 | Time Attack / Score Challenge | 🎮 | `RoundManager` + a stopwatch / score listener |
 | Training mode | 🧩 | Pause/frame-step (`FightClock`), dummy record/playback (`InputRecorder`), auto-block (`Fighter2D.auto_block`), infinite time (`round_time = 0`) all built in; menu is yours |
 | Watch mode (AI vs AI) | 🎮 | Two AI-driven fighters (LimboAI behavior trees) |
-| Team battles: simul (2v2 on screen at once) | 🧩 | `RoundManager` supports N fighters & teams via `team`; assists 🚧 |
-| Team battles: turns / tag with red life | 🚧 | Red life already in `HealthComponent` |
+| Team battles: simul (2v2 on screen at once) | 🧩 | `RoundManager` supports N fighters & teams via `team` |
+| Team battles: tag with invuln entry, KO fallthrough, benched red-life regen | ✅ | `TagTeam` |
+| Team battles: turns mode | ✅ | `TagTeam.turns_mode` |
+| Assist call-ins (Marvel style, assists can be hit — happy birthday) | ✅ | `TagTeam.call_assist()`; your states perform the move via `assist_called` |
 | Story mode / cutscenes | 🎮 | That's just Godot |
 | Bonus stages (car, barrels) | 🎮 | A `HealthComponent` on a car. Ship it. |
 | Challenger interruption ("Here comes a new challenger!") | 🎮 | |
@@ -264,7 +266,7 @@ Every switch that lets you break the game **on purpose**, in one place:
 - [x] Counter hits, instant block, armor, intangibility windows
 - [x] Air dashes, double jumps, invuln backdashes
 - [x] Save states / rollback state serialization (`StateSnapshotter`)
-- [ ] Tag / turns team modes with red-life handoff + assists
+- [x] Tag / turns team modes with assists and benched red-life regen (`TagTeam`)
 - [ ] Rollback netcode (re-simulation driver, determinism audit, projectile pooling)
 - [ ] Delay-based netplay (fallback while rollback bakes)
 - [ ] Demo scene updated to use the new systems end-to-end

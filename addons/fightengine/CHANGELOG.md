@@ -44,6 +44,8 @@ Everything on the original roadmap, plus the systems around it. See
   classes: training save states and the serialization half of rollback
   netcode.
 - Training widgets: `InputHistoryDisplay`, `FrameAdvantageTracker`.
+- `TagTeam`: tag / turns team play with assist call-ins, invulnerable tag
+  entries, benched red-life regen, and KO fallthrough.
 
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added

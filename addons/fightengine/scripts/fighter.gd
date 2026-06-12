@@ -150,6 +150,8 @@ var current_move: MoveData = null
 var armor_hits: int = 0
 ## Frames of full intangibility left (backdashes, techs, wakeup invuln).
 var intangible_frames: int = 0
+## All collision boxes registered under this fighter.
+var boxes: Array[CollisionBox2D] = []
 
 var gravity: float = float(ProjectSettings.get_setting("physics/2d/default_gravity", 980.0))
 
@@ -181,6 +183,7 @@ func _ready() -> void:
 		health.reset()
 
 	health.died.connect(func() -> void: died.emit())
+	boxes.clear()
 	_register_boxes(self)
 
 	if input_buffer != null:
@@ -193,9 +196,23 @@ func _register_boxes(node: Node) -> void:
 			var box := child as CollisionBox2D
 			box.combatant = self
 			box.team = team
+			boxes.append(box)
 			if box is HurtBox2D:
 				(box as HurtBox2D).was_hit.connect(_on_hurtbox_hit)
 		_register_boxes(child)
+
+
+## Benches or fields the fighter (tag team systems). Benched fighters are
+## hidden, stop processing, and have every box deactivated. On re-enable,
+## hurt and push boxes come back; hitboxes stay off (animations drive those).
+func set_combat_enabled(enabled: bool) -> void:
+	visible = enabled
+	process_mode = Node.PROCESS_MODE_INHERIT if enabled else Node.PROCESS_MODE_DISABLED
+	for box in boxes:
+		if enabled:
+			box.is_active = box is HurtBox2D or box is PushBox2D
+		else:
+			box.is_active = false
 
 
 func _physics_process(delta: float) -> void:

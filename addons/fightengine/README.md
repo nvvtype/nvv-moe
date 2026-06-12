@@ -35,6 +35,7 @@ See **[FEATURES.md](FEATURES.md)** for the full feature list, mapped against IKE
 - **`FightCamera2D`** — two-fighter framing, stage zoom, screen shake.
 - **`Projectile2D`** — fireballs with lifetime, hit counts, and priority-based clashing.
 - **`StateSnapshotter`** — save/restore the whole fight: training save states today, rollback netcode groundwork tomorrow.
+- **`TagTeam`** — tag and turns team play: raw tags with invuln entry, Marvel-style assist call-ins, benched red-life regen, KO fallthrough.
 
 ### Training
 - **`InputHistoryDisplay`** — on-screen input viewer (arrows + buttons + frame counts).
