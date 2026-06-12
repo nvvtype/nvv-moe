@@ -51,7 +51,18 @@ See **[FEATURES.md](FEATURES.md)** for the full feature list, mapped against IKE
 - **`FighterStateMachine`** — batteries-included character brain: locomotion, prejump/jumps/superjumps, step/run dashes, air dashes, frame-data-driven attacks (a move works with zero animation), hitstun/blockstun/knockdown/wakeup, dizzy with mash-out, guard crush, taunts, and a CUSTOM state hook for character gimmicks. Characters become pure resources — see [AUTHORING.md](AUTHORING.md).
 - Prefer your own FSM? `Fighter2D` communicates through signals, so anything works — the demo shows a [LimboAI](https://github.com/limbonaut/limboai) (MIT, by [limbonaut](https://github.com/limbonaut)) setup, and the core addon has no hard dependency on it.
 
-## Quick start
+## Quick start (zero setup)
+
+Set **`addons/fightengine/template/main_menu.tscn`** as the project's main
+scene and press play: main menu → Versus or Training with two placeholder
+box-men (full movelist: magic series, low, overhead, launcher, DP, command
+throw, TK dive kick with rekka followup, wall-bounce lunge, super). Default
+keys register automatically — P1: WASD + U/I/O/P, P2: arrows + numpad
+4/5/6/+. Training has health refill, pause/frame-step, dummy
+record/playback, save states, and an input display. Assign your own
+character scene + `FighterData` on the FightScene exports when ready.
+
+## Quick start (your own scene)
 
 1. Enable the plugin in **Project → Project Settings → Plugins**.
 2. Add InputMap actions for each player: `p1_up/down/left/right` plus one per attack button — for a 4-button LMHS game: `p1_l`, `p1_m`, `p1_h`, `p1_s` (and the `p2_` set). Set `InputBuffer.buttons = ["l", "m", "h", "s"]` to match.

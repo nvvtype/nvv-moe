@@ -98,6 +98,17 @@ Everything on the original roadmap, plus the systems around it. See
   sync, checksum desync detection). `integrations/gekkonet/` ships a
   GDExtension wrapper scaffold for the GekkoNet C library as a drop-in
   alternative backend (no official Godot addon exists upstream).
+- Game template (`template/`): main menu (Versus / Training / Quit),
+  fight scene with code-built stage, HUD (health/meter bars, timer, round
+  pips, combo counters, announcements), runtime-registered default
+  keyboard controls for both players, and training mode (health refill,
+  pause/frame-step, dummy record/playback via F-keys, save states, input
+  display, frame advantage). `PlaceholderFighter` builds a fully playable
+  box-man with a complete movelist in code, so the game runs before any
+  art or character authoring.
+- Fixed `FighterStateMachine` connecting to auto-created fighter
+  components too early (children ready before parents); wiring is now
+  deferred.
 - Conditional move design: `MoveData.followup_only` + `requires_clean_hit`
   (rekka followups that only exist after a clean hit), `HitData.air_override`
   / `counter_override` (different reactions on air hit / counter hit), and

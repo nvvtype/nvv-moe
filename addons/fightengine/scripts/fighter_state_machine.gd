@@ -125,6 +125,13 @@ func _ready() -> void:
 	_backdash_motion.sequence = [4, 5, 4]
 	_backdash_motion.max_duration = 11
 
+	# Deferred: children ready before parents, so the fighter's auto-created
+	# components (health, burst...) don't exist yet during our _ready.
+	_wire_fighter_signals.call_deferred()
+	_enter(State.IDLE)
+
+
+func _wire_fighter_signals() -> void:
 	fighter.hit_taken.connect(_on_hit_taken)
 	fighter.wall_splatted.connect(func() -> void: _play(&"wall_splat", &"hitstun"))
 	fighter.knocked_down.connect(_on_knocked_down)
@@ -139,8 +146,6 @@ func _ready() -> void:
 	if fighter.health != null:
 		fighter.health.dizzied.connect(_on_dizzied)
 		fighter.health.guard_broken.connect(_on_guard_broken)
-
-	_enter(State.IDLE)
 
 
 func _find_child_of(node: Node, type_name: String) -> Node:

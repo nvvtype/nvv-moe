@@ -162,11 +162,11 @@ The kusoge design template gets its own section. These are the systems that make
 | Rounds, best-of-N, round timer | ✅ | `RoundManager` |
 | KO / double KO / time over / perfect detection | ✅ | `RoundManager.round_ended` reasons |
 | Pre-round ceremony & post-KO slow-mo windows | ✅ | `pre_round_frames`, `round_end_frames`, `FightClock.slowdown` |
-| Versus (local PvP) | 🎮 | Two `Fighter2D` + `RoundManager`; ~a scene's worth of glue |
+| Versus (local PvP) | ✅ | `template/` — main menu + fight scene, zero setup |
 | Arcade ladder / Boss Rush | 🎮 | Sequence matches, swap `FighterData` |
 | Survival (one health bar, endless opponents) | 🎮 | Skip `reset_for_round()` for the player |
 | Time Attack / Score Challenge | 🎮 | `RoundManager` + a stopwatch / score listener |
-| Training mode | 🧩 | Pause/frame-step (`FightClock`), dummy record/playback (`InputRecorder`), auto-block (`Fighter2D.auto_block`), infinite time (`round_time = 0`) all built in; menu is yours |
+| Training mode | ✅ | `template/` training mode: infinite time, health refill, pause/frame-step, dummy record/playback, save states, input display |
 | Complete character controller (all universal states, data-driven attacks) | ✅ | `FighterStateMachine` + [AUTHORING.md](AUTHORING.md) |
 | Watch mode (AI vs AI) | 🎮 | Two AI-driven fighters (LimboAI behavior trees) |
 | Team battles: simul (2v2 on screen at once) | 🧩 | `RoundManager` supports N fighters & teams via `team` |
