@@ -80,6 +80,9 @@ signal died
 @export var knockdown_frames_hard: int = 45
 ## Friction applied to sliding knockdowns, in px/s lost per frame.
 @export var knockdown_friction: float = 30.0
+## Intangibility granted when getting up from a knockdown (okizeme dial:
+## 0 = meaty everything, lots = wakeup is sacred).
+@export var wakeup_invuln_frames: int = 0
 
 @export_group("Air tech")
 ## Automatically recover in the air when air hitstun/untech time runs out
@@ -864,6 +867,7 @@ func _update_stun() -> void:
 		if knockdown_frames == 0:
 			_sliding_knockdown = false
 			velocity.x = 0.0
+			intangible_frames = maxi(intangible_frames, wakeup_invuln_frames)
 			got_up.emit()
 		return
 

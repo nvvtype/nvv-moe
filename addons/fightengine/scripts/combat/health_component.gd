@@ -18,6 +18,10 @@ signal died
 @export var max_health: int = 1000
 ## Defense multiplier: incoming damage is divided by this. 1.0 = normal.
 @export var defense: float = 1.0
+## Guts: damage multiplier sampled by remaining health fraction (X axis
+## 0..1 = health %, Y = damage multiplier). A curve dipping toward 0.6 on
+## the left = classic "characters get tankier near death". Null = off.
+@export var guts: Curve
 
 @export_group("Red life")
 ## Master switch for recoverable life.
@@ -69,6 +73,8 @@ func take_hit(data: HitData, scaling: float = 1.0) -> int:
 	if is_dead:
 		return 0
 	var amount := maxi(int(roundf(data.damage * scaling / maxf(defense, 0.01))), 0)
+	if guts != null and max_health > 0:
+		amount = int(roundf(amount * guts.sample_baked(float(current) / float(max_health))))
 	if data.damage > 0:
 		amount = maxi(amount, 1)
 	_apply_damage(amount, data)

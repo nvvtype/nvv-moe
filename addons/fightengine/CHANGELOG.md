@@ -65,6 +65,17 @@ Everything on the original roadmap, plus the systems around it. See
 - Marvel snapbacks (`HitData.snapback` + `TagTeam` forced switch), DHCs
   (`ChainRules.supers_to_supers`), and Astral-style instant kill hits
   (`HitData.instant_kill`, `HealthComponent.kill()`).
+- `FighterStateMachine`: batteries-included character controller covering
+  every universal state (locomotion, prejump/air/superjump, step & run
+  dashes, air dashes, backdashes, attacks, hitstun/blockstun, knockdown/
+  getup, dizzy with mash-out, guard crush, taunt) with frame-data-driven
+  attack execution — moves work with no animation; animations are an
+  optional, convention-named layer on top. CUSTOM state hook for gimmicks.
+- Character authoring: `MoveData.hitbox_name`/`self_velocity` (lunges),
+  multi-hit active-window splitting from the `hits` array,
+  `FighterData` prejump/dash/run/superjump fields, guts curve on
+  `HealthComponent`, wakeup invuln on `Fighter2D`, and `AUTHORING.md`
+  (frame-data-first, 2–6 frame art workflow).
 
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added

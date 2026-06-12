@@ -55,7 +55,15 @@ enum Situation {
 
 @export_group("Gameplay")
 @export var animation: StringName
-## Hit definitions, in order, for multi-hit moves.
+## Name of the HitBox2D node (under the fighter) this move activates when
+## FighterStateMachine runs it from frame data.
+@export var hitbox_name: StringName = &"HitBox"
+## Facing-relative velocity applied to the fighter when the active window
+## starts (lunging specials, slides, dive kicks). Zero = no movement.
+@export var self_velocity: Vector2 = Vector2.ZERO
+## Hit definitions, in order, for multi-hit moves. With FighterStateMachine,
+## the active window is split evenly between entries (each one re-arms the
+## hitbox), so a 3-entry array makes a true 3-hit move from data alone.
 @export var hits: Array[HitData] = []
 ## Tags this move can cancel into (checked by your state machine).
 ## E.g. a light normal might allow ["special", "super"], a special ["super"].

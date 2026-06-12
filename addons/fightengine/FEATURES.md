@@ -52,11 +52,17 @@ The kusoge design template gets its own section. These are the systems that make
 | Double jumps / triple jumps | ✅ | `FighterData.air_jumps` |
 | Air dashes (count, speed, momentum kill) | ✅ | `FighterData.air_dashes`/`air_dash_speed`, `Fighter2D.air_dash()` |
 | Invuln backdashes | ✅ | `FighterData.backdash_invuln_frames`, `Fighter2D.backdash()` |
+| Superjump (Marvel: tap down, then up) | ✅ | `FighterData.superjump_enabled`/`superjump_velocity` |
+| Step dash vs hold-to-run per character | ✅ | `FighterData.run_mode`/`dash_frames` |
+| Guts (damage scaling at low health, per character) | ✅ | `HealthComponent.guts` Curve |
+| Wakeup invuln (okizeme dial) | ✅ | `Fighter2D.wakeup_invuln_frames` |
+| Dizzy state with mash-out, guard crush state, taunts (with meter gift) | ✅ | `FighterStateMachine` |
+| Lunging moves / slides / dive kick movement | ✅ | `MoveData.self_velocity` |
 | Counter hits (CH damage + bonus hitstun, GGXX style) | ✅ | `Fighter2D.counter_hit_*`, `counter_hit` signal |
 | Instant block (GGXX: less blockstun + meter) | ✅ | `Fighter2D.instant_block_window`/`instant_block_advantage` |
 | Pushblock / advancing guard (Marvel) | ✅ | `Fighter2D.pushblock_*` |
 | Command grabs / air throws | ✅ | `THROW` class + `MotionInput`; air throws via `throws_ignore_state` or custom states |
-| Chain / gatling combos (magic series) | 🧩 | `MoveData.cancels_into` tags; state machine enforces routes |
+| Chain / gatling combos (magic series, L→M→H→S) | ✅ | `ChainRules` + `Fighter2D.can_cancel_into()`, enforced by `FighterStateMachine` |
 | EX / ES moves (two-button enhanced specials, Melty/Vampire) | ✅ | `MoveData.MoveType.EX_SPECIAL` + `require_all_buttons` + `meter_cost` |
 | Supers with meter costs & super flash | ✅ | `MoveData.meter_cost`, `FightClock.hitstop()` |
 | Roman cancel / rapid cancel (red RC contact rule, freeze pop) | ✅ | `Fighter2D.try_roman_cancel()` / `roman_cancel_*` exports |
@@ -144,6 +150,7 @@ The kusoge design template gets its own section. These are the systems that make
 | Survival (one health bar, endless opponents) | 🎮 | Skip `reset_for_round()` for the player |
 | Time Attack / Score Challenge | 🎮 | `RoundManager` + a stopwatch / score listener |
 | Training mode | 🧩 | Pause/frame-step (`FightClock`), dummy record/playback (`InputRecorder`), auto-block (`Fighter2D.auto_block`), infinite time (`round_time = 0`) all built in; menu is yours |
+| Complete character controller (all universal states, data-driven attacks) | ✅ | `FighterStateMachine` + [AUTHORING.md](AUTHORING.md) |
 | Watch mode (AI vs AI) | 🎮 | Two AI-driven fighters (LimboAI behavior trees) |
 | Team battles: simul (2v2 on screen at once) | 🧩 | `RoundManager` supports N fighters & teams via `team` |
 | Team battles: tag with invuln entry, KO fallthrough, benched red-life regen | ✅ | `TagTeam` |
@@ -288,6 +295,9 @@ Every switch that lets you break the game **on purpose**, in one place:
 - [x] Burst, Barrier/FD, Overdrive, alpha counters
 - [x] Magic series chain routing (`ChainRules`, LMHS, reverse beat), EX move type
 - [x] Roman cancels, parry/shield, snapbacks, DHCs, instant-kill hits
+- [x] FighterStateMachine: full character controller, frame-data-driven attacks
+- [x] Superjumps, run dashes, guts, wakeup invuln, dizzy/guard-crush states, taunts
+- [x] AUTHORING.md character creation guide
 - [ ] Rollback netcode (re-simulation driver, determinism audit, projectile pooling)
 - [ ] Delay-based netplay (fallback while rollback bakes)
 - [ ] Demo scene updated to use the new systems end-to-end

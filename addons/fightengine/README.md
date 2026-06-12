@@ -46,29 +46,30 @@ See **[FEATURES.md](FEATURES.md)** for the full feature list, mapped against IKE
 - **`FrameAdvantageTracker`** — live +/- frame advantage after every interaction.
 
 ### State management
-- Demo uses [LimboAI](https://github.com/limbonaut/limboai) by [limbonaut](https://github.com/limbonaut) (MIT) for state machines. The core addon has **no hard dependency** on it — `Fighter2D` communicates through signals, so any FSM works.
+- **`FighterStateMachine`** — batteries-included character brain: locomotion, prejump/jumps/superjumps, step/run dashes, air dashes, frame-data-driven attacks (a move works with zero animation), hitstun/blockstun/knockdown/wakeup, dizzy with mash-out, guard crush, taunts, and a CUSTOM state hook for character gimmicks. Characters become pure resources — see [AUTHORING.md](AUTHORING.md).
+- Prefer your own FSM? `Fighter2D` communicates through signals, so anything works — the demo shows a [LimboAI](https://github.com/limbonaut/limboai) (MIT, by [limbonaut](https://github.com/limbonaut)) setup, and the core addon has no hard dependency on it.
 
 ## Quick start
 
 1. Enable the plugin in **Project → Project Settings → Plugins**.
 2. Add InputMap actions for each player: `p1_up/down/left/right` plus one per attack button — for a 4-button LMHS game: `p1_l`, `p1_m`, `p1_h`, `p1_s` (and the `p2_` set). Set `InputBuffer.buttons = ["l", "m", "h", "s"]` to match.
-3. Build a fighter scene:
+3. Build a fighter scene (full walkthrough in [AUTHORING.md](AUTHORING.md)):
    ```
    Fighter2D (CharacterBody2D)
    ├── CollisionShape2D          # floor/wall collision
    ├── Rig (Node2D)              # assigned to Fighter2D.rig — gets X-flipped
    │   ├── Sprite2D + AnimationPlayer
    │   ├── HurtBox2D
-   │   ├── HitBox2D              # is_active keyed in attack animations
+   │   ├── HitBox (HitBox2D)     # leave inactive; frame data drives it
    │   └── PushBox2D
    ├── InputBuffer               # action_prefix = "p1_"
-   └── CommandInterpreter        # input_buffer + moves from FighterData
+   ├── CommandInterpreter        # auto-filled from FighterData
+   └── FighterStateMachine       # the brain — auto-wires everything
    ```
-4. Create a `FighterData` resource, fill in stats, and add `MoveData` entries (each with an optional `MotionInput` and one or more `HitData` hits).
-5. In your fight scene add `FightClock`, `RoundManager` (assign both fighters), and `FightCamera2D` (assign both as targets), then call `RoundManager.start_match()`.
-6. React to `CommandInterpreter.move_detected` in your state machine: check `fighter.can_perform(move)`, call `fighter.begin_move(move)`, play `move.animation`, and key `HitBox2D.is_active` + `hit_data` in the animation. Call `fighter.end_move()` when it finishes.
+4. Create a `FighterData` resource: stats, mobility, and `MoveData` entries (each with an optional `MotionInput` and one or more `HitData` hits). Set startup/active/recovery on each move — **that's a working move, animation optional**.
+5. In your 1v1 fight scene add `FightClock`, `RoundManager` (assign both fighters), and `FightCamera2D` (assign both as targets), then call `RoundManager.start_match()`.
 
-Damage, guard, combos, juggles, meter, hitstop, knockdowns, and round flow all happen automatically from there.
+Walking, dashing, jumping, attacks, damage, guard, combos, juggles, meter, hitstop, knockdowns, wakeups, and round flow all happen automatically from there. Characters are resources: build the scene once, swap `FighterData` per character.
 
 ## Requirements
 
@@ -78,6 +79,7 @@ Damage, guard, combos, juggles, meter, hitstop, knockdowns, and round flow all h
 ## Documentation
 
 - [FEATURES.md](FEATURES.md) — full feature list (IKEMEN GO–referenced) and roadmap
+- [AUTHORING.md](AUTHORING.md) — character creation guide (frame data first, 2–6 frame art workflow)
 - Every class is documented with doc comments — see the Godot editor's class help
 
 ## License
