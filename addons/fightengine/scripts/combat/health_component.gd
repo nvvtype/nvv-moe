@@ -114,6 +114,19 @@ func _apply_damage(amount: int, data: HitData) -> void:
 		died.emit()
 
 
+## Instant KO (Astral Heat / Instant Kill hits).
+func kill() -> void:
+	if is_dead:
+		return
+	var remaining := current
+	current = 0
+	if remaining > 0:
+		damaged.emit(remaining, null)
+	health_changed.emit(current, max_health)
+	is_dead = true
+	died.emit()
+
+
 func heal(amount: int) -> void:
 	if amount <= 0 or is_dead:
 		return

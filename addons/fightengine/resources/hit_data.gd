@@ -68,6 +68,16 @@ enum KnockdownType { NONE, SOFT, HARD } ## SOFT can be teched, HARD cannot.
 @export var air_blockable: bool = true
 @export var hit_class: HitClass = HitClass.STRIKE
 
+@export_group("Special properties")
+## Marvel snapback: on clean hit, forces the victim's TagTeam to switch
+## the victim out (no effect in 1v1).
+@export var snapback: bool = false
+## Astral Heat / Instant Kill: a clean hit KOs outright. Gate the move with
+## meter costs and conditions in your states; this just does the deed.
+@export var instant_kill: bool = false
+## This hit cannot be parried/shielded (throws never can regardless).
+@export var unparryable: bool = false
+
 @export_group("Juggle")
 ## Juggle points spent from the victim's pool when this hit connects airborne.
 ## If the pool can't afford it, the hit is juggle-protected (whiffs).

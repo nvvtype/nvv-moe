@@ -53,6 +53,7 @@ func _ready() -> void:
 		var fighter := fighters[i]
 		fighter.set_combat_enabled(i == active_index)
 		fighter.died.connect(_on_fighter_died.bind(fighter))
+		fighter.snapped_back.connect(_on_snapback.bind(fighter))
 	if opponent_team != null:
 		opponent_team.tagged_in.connect(_on_enemy_tagged)
 		_retarget(opponent_team.active_fighter())
@@ -202,6 +203,19 @@ func _on_fighter_died(fighter: Fighter2D) -> void:
 		team_defeated.emit()
 		return
 	_ko_replace_frames = ko_replace_delay_frames
+
+
+## Marvel snapback: the active character is forced out, raw entry for the
+## next one. Assists hit by a snapback just get benched.
+func _on_snapback(fighter: Fighter2D) -> void:
+	if fighter == _assist:
+		_end_assist()
+		return
+	if fighter != active_fighter():
+		return
+	var next := _next_alive_index()
+	if next >= 0:
+		_switch_to(next, tag_entry_offset, 0)
 
 
 func _on_enemy_tagged(_enemy: Fighter2D) -> void:

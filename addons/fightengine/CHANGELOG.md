@@ -58,6 +58,13 @@ Everything on the original roadmap, plus the systems around it. See
 - Alpha counters (guard cancel attacks) on `Fighter2D` with meter cost,
   invuln, and the `alpha_countered` signal.
 - `MoveData.MoveType.EX_SPECIAL` for EX/ES moves.
+- Roman/Rapid Cancel on `Fighter2D` (meter cost, red-RC contact rule,
+  freeze pop, button auto-detect or `try_roman_cancel()`).
+- Parry/shield system: tap window, whiffed-parry guard lockout, stance
+  rules, both-sides freeze, meter reward, `unparryable` HitData flag.
+- Marvel snapbacks (`HitData.snapback` + `TagTeam` forced switch), DHCs
+  (`ChainRules.supers_to_supers`), and Astral-style instant kill hits
+  (`HitData.instant_kill`, `HealthComponent.kill()`).
 
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added

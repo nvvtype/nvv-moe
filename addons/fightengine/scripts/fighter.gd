@@ -28,6 +28,16 @@ signal pushblocked
 signal alpha_countered(move: MoveData)
 ## A hit was blocked with barrier / Faultless Defense.
 signal barrier_blocked_hit(data: HitData)
+## Roman/Rapid cancel performed; return to neutral in your states.
+signal roman_canceled
+## This fighter parried a hit.
+signal parried(attacker: Fighter2D, data: HitData)
+## This fighter's attack got parried.
+signal got_parried(victim: Fighter2D)
+## A whiffed parry window just ended; the no-block recovery has started.
+signal parry_whiffed
+## This fighter was hit by a snapback and must tag out (TagTeam handles it).
+signal snapped_back
 ## This fighter got counter hit (was hit during its own attack).
 signal counter_hit(attacker: Fighter2D, data: HitData)
 ## This fighter blocked within the instant block window.
@@ -110,6 +120,37 @@ signal died
 @export var alpha_counter_meter_cost: int = 1000
 @export var alpha_counter_invuln_frames: int = 12
 
+@export_group("Roman cancel")
+## Roman / Rapid Cancel: spend meter to cancel the current move back to
+## neutral. Your state machine returns to idle on [signal roman_canceled].
+@export var roman_cancel_enabled: bool = false
+## All of these pressed together (3-frame window) trigger it. Leave empty
+## to only cancel via [method try_roman_cancel] from your states.
+@export var roman_cancel_buttons: PackedStringArray = PackedStringArray(["m", "h", "s"])
+@export var roman_cancel_meter_cost: int = 1000
+## GGXX red-RC rule: the move must have hit or been blocked. Off = yellow
+## RC anything, anytime (FRC everything — kusoge dial).
+@export var roman_cancel_requires_contact: bool = true
+## Brief opponent freeze on the cancel (the RC pop).
+@export var roman_cancel_freeze: int = 10
+
+@export_group("Parry / shield")
+## Third Strike parry / Melty shield: tap the trigger to open a window;
+## a hit arriving inside it is negated with a freeze and meter reward.
+@export var parry_enabled: bool = false
+## All of these tapped together attempt a parry.
+@export var parry_buttons: PackedStringArray = PackedStringArray(["s"])
+@export var parry_window: int = 8
+## Frames you cannot block after a whiffed parry window (the risk part).
+@export var parry_whiff_recovery: int = 14
+## Freeze applied to both fighters on a successful parry (the clink).
+@export var parry_freeze: int = 10
+@export var parry_meter_gain: int = 100
+@export var air_parry_allowed: bool = true
+## 3S rule: standing parries can't take lows, crouching parries can't take
+## highs. Off = one parry catches everything.
+@export var stance_parry: bool = true
+
 @export_group("Corner push")
 ## When a cornered victim can't be pushed back any further, the attacker is
 ## pushed away instead (IKEMEN corner push). Requires stage walls, or
@@ -188,6 +229,8 @@ var _was_airborne: bool = false
 var _air_jumps_left: int = 0
 var _air_dashes_left: int = 0
 var _pushblock_cooldown: int = 0
+var _parry_window_left: int = 0
+var _parry_recovery_left: int = 0
 var _last_hit: HitData = null
 var _pending_ground_bounce: bool = false
 var _pending_wall_bounce: bool = false
@@ -252,6 +295,8 @@ func _physics_process(delta: float) -> void:
 	_update_facing()
 	_check_pushblock()
 	_check_alpha_counter()
+	_check_parry_input()
+	_check_roman_cancel_input()
 	if barrier != null:
 		barrier.frame_tick(_is_holding_barrier())
 
@@ -424,6 +469,9 @@ func can_block(hit: HitData) -> bool:
 		return false
 	if is_knocked_down() or in_hitstun():
 		return false
+	# Whiffed parry: guard is locked out.
+	if _parry_recovery_left > 0:
+		return false
 	# Blockstun keeps guard up; otherwise the stick must be held back.
 	if not in_blockstun() and not is_holding_back():
 		return false
@@ -472,6 +520,9 @@ func receive_hit(hitbox: HitBox2D) -> void:
 		if is_airborne() and in_hitstun() \
 				and not combo_tracker.try_spend_juggle(hit.juggle_cost):
 			return
+
+	if _try_parry(hit, attacker):
+		return
 
 	var blocked := can_block(hit)
 	var away := _away_sign(hitbox)
@@ -602,6 +653,11 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 			and hit.launch == Vector2.ZERO:
 		_enter_knockdown(hit.knockdown == HitData.KnockdownType.HARD)
 
+	if hit.instant_kill and health != null:
+		health.kill()
+	if hit.snapback:
+		snapped_back.emit()
+
 
 ## Called on the attacker by the victim once a hit has fully resolved.
 func confirm_hit(victim: Fighter2D, hit: HitData, blocked: bool) -> void:
@@ -645,6 +701,83 @@ func _check_pushblock() -> void:
 	opponent.velocity.x = pushblock_force * away
 	_pushblock_cooldown = 20
 	pushblocked.emit()
+
+
+## True when every button in [param button_set] was pressed within the last
+## 3 frames, with at least one of them this frame (plinked multi-presses ok).
+func _combo_pressed(button_set: PackedStringArray) -> bool:
+	if input_buffer == null or button_set.is_empty():
+		return false
+	var pressed_now := false
+	for button in button_set:
+		if not input_buffer.was_pressed(button, 3):
+			return false
+		if input_buffer.was_pressed(button, 1):
+			pressed_now = true
+	return pressed_now
+
+
+func _check_parry_input() -> void:
+	if _parry_recovery_left > 0:
+		_parry_recovery_left -= 1
+		return
+	if _parry_window_left > 0:
+		_parry_window_left -= 1
+		if _parry_window_left == 0:
+			_parry_recovery_left = parry_whiff_recovery
+			parry_whiffed.emit()
+		return
+	if not parry_enabled or in_stun() or is_attacking():
+		return
+	if _combo_pressed(parry_buttons):
+		_parry_window_left = parry_window
+
+
+func _try_parry(hit: HitData, attacker: Fighter2D) -> bool:
+	if _parry_window_left <= 0:
+		return false
+	if hit.hit_class == HitData.HitClass.THROW or hit.unparryable:
+		return false
+	if is_airborne() and not air_parry_allowed:
+		return false
+	if stance_parry and not is_airborne():
+		if hit.guard_height == HitData.GuardHeight.LOW and not crouching:
+			return false
+		if hit.guard_height == HitData.GuardHeight.HIGH and crouching:
+			return false
+	_parry_window_left = 0
+	_parry_recovery_left = 0
+	if FightClock.active != null:
+		FightClock.active.hitstop([self, attacker], parry_freeze)
+	if meter != null:
+		meter.gain(parry_meter_gain)
+	parried.emit(attacker, hit)
+	if attacker != null:
+		attacker.got_parried.emit(self)
+	return true
+
+
+func _check_roman_cancel_input() -> void:
+	if roman_cancel_enabled and is_attacking() \
+			and _combo_pressed(roman_cancel_buttons):
+		try_roman_cancel()
+
+
+## Roman / Rapid Cancel the current move. Returns true on success; your
+## state machine returns to neutral on [signal roman_canceled].
+func try_roman_cancel() -> bool:
+	if not is_attacking():
+		return false
+	if roman_cancel_requires_contact and not move_has_connected:
+		return false
+	if roman_cancel_meter_cost > 0 \
+			and (meter == null or not meter.try_spend(roman_cancel_meter_cost)):
+		return false
+	end_move()
+	if roman_cancel_freeze > 0 and FightClock.active != null and opponent != null:
+		FightClock.active.hitstop([opponent], roman_cancel_freeze)
+	roman_canceled.emit()
+	return true
 
 
 func _check_alpha_counter() -> void:
@@ -892,6 +1025,8 @@ func save_state() -> Dictionary:
 		"air_jumps_left": _air_jumps_left,
 		"air_dashes_left": _air_dashes_left,
 		"pushblock_cooldown": _pushblock_cooldown,
+		"parry_window_left": _parry_window_left,
+		"parry_recovery_left": _parry_recovery_left,
 		"pending_knockdown": _pending_knockdown,
 		"pending_ground_bounce": _pending_ground_bounce,
 		"pending_wall_bounce": _pending_wall_bounce,
@@ -923,6 +1058,8 @@ func load_state(state: Dictionary) -> void:
 	_air_jumps_left = state["air_jumps_left"]
 	_air_dashes_left = state["air_dashes_left"]
 	_pushblock_cooldown = state["pushblock_cooldown"]
+	_parry_window_left = state["parry_window_left"]
+	_parry_recovery_left = state["parry_recovery_left"]
 	_pending_knockdown = state["pending_knockdown"]
 	_pending_ground_bounce = state["pending_ground_bounce"]
 	_pending_wall_bounce = state["pending_wall_bounce"]

@@ -30,6 +30,8 @@ extends Resource
 @export var normals_to_specials: bool = true
 @export var normals_to_supers: bool = true
 @export var specials_to_supers: bool = true
+## DHC (Marvel delayed hyper combo): supers cancel into other supers.
+@export var supers_to_supers: bool = false
 ## EX moves count as specials for routing (normals → EX, EX → super).
 @export var ex_counts_as_special: bool = true
 
@@ -90,6 +92,8 @@ func can_chain(from: MoveData, to: MoveData, connected: bool) -> bool:
 		return normals_to_supers
 	if cat_from == 1 and cat_to == 2:
 		return specials_to_supers
+	if cat_from == 2 and cat_to == 2:
+		return supers_to_supers
 	return false
 
 

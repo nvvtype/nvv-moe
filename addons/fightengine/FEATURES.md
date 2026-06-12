@@ -59,7 +59,11 @@ The kusoge design template gets its own section. These are the systems that make
 | Chain / gatling combos (magic series) | 🧩 | `MoveData.cancels_into` tags; state machine enforces routes |
 | EX / ES moves (two-button enhanced specials, Melty/Vampire) | ✅ | `MoveData.MoveType.EX_SPECIAL` + `require_all_buttons` + `meter_cost` |
 | Supers with meter costs & super flash | ✅ | `MoveData.meter_cost`, `FightClock.hitstop()` |
-| Roman cancel / rapid cancel | 🎮 | `end_move()` + `meter.try_spend()` + `FightClock.hitstop()`; ~10 lines in a state |
+| Roman cancel / rapid cancel (red RC contact rule, freeze pop) | ✅ | `Fighter2D.try_roman_cancel()` / `roman_cancel_*` exports |
+| Parry / shield (3S/Melty: tap window, whiff lockout, stance rules, the clink) | ✅ | `Fighter2D.parry_*`, `parried`/`got_parried`/`parry_whiffed` signals |
+| Snapback (Marvel: force the victim's team to switch) | ✅ | `HitData.snapback` + `TagTeam` handling |
+| DHC (delayed hyper combo: super cancels into super) | ✅ | `ChainRules.supers_to_supers` |
+| Astral Heat / Instant Kill hits | ✅ | `HitData.instant_kill` |
 | Alpha counter / Dead Angle / Counter Assault (guard cancel) | ✅ | `Fighter2D.alpha_counter_*`, `alpha_countered` signal |
 | Barrier / Faultless Defense (own gauge, no chip, mega pushback, air-blocks anything) | ✅ | `BarrierComponent` + danger state on depletion |
 | Burst with gauge, gold burst in neutral (BB/GGXX) | ✅ | `BurstSystem` (gauge fills passively + from damage taken) |
@@ -249,6 +253,9 @@ Every switch that lets you break the game **on purpose**, in one place:
 | `burst_cost_fraction = 0.1` | Ten bursts per gauge. Combos are a suggestion | `BurstSystem` |
 | Burst hitbox with real damage | The defensive mechanic is also your best move | `BurstSystem` + `HitData` |
 | `base_duration = 99999` | Permanent overdrive. Install: the character | `OverdriveComponent` |
+| `roman_cancel_requires_contact = false` + cost 0 | FRC literally everything for free | `Fighter2D` |
+| `parry_whiff_recovery = 0` + `parry_window = 30` | Mash parry with zero risk, become Daigo | `Fighter2D` |
+| `instant_kill = true` on a 5L | The jab of legend | `HitData` |
 
 ---
 
@@ -280,6 +287,7 @@ Every switch that lets you break the game **on purpose**, in one place:
 - [x] Tag / turns team modes with assists and benched red-life regen (`TagTeam`)
 - [x] Burst, Barrier/FD, Overdrive, alpha counters
 - [x] Magic series chain routing (`ChainRules`, LMHS, reverse beat), EX move type
+- [x] Roman cancels, parry/shield, snapbacks, DHCs, instant-kill hits
 - [ ] Rollback netcode (re-simulation driver, determinism audit, projectile pooling)
 - [ ] Delay-based netplay (fallback while rollback bakes)
 - [ ] Demo scene updated to use the new systems end-to-end
