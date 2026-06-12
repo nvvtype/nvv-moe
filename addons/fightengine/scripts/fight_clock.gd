@@ -31,6 +31,14 @@ var is_paused: bool = false:
 		is_paused = value
 		paused_changed.emit(is_paused)
 
+## Deterministic gameplay RNG. ALL gameplay randomness must come from here
+## (never randf()/randi()), so simulations replay identically for replays
+## and rollback. Presentation-only randomness (camera shake) is exempt.
+var rng := RandomNumberGenerator.new()
+## Seed applied at startup and on reset(). Exchange it between peers before
+## an online match.
+@export var rng_seed: int = 0
+
 var _stepping: bool = false
 var _step_requested: bool = false
 var _hitstop_until: Dictionary = {}
@@ -40,6 +48,7 @@ var _slowdown_accum: int = 0
 func _init() -> void:
 	# Run before fighters and input buffers every physics frame.
 	process_physics_priority = -1000
+	rng.seed = rng_seed
 
 
 func _enter_tree() -> void:
@@ -115,12 +124,14 @@ func save_state() -> Dictionary:
 		"frame": frame,
 		"slowdown_accum": _slowdown_accum,
 		"hitstop": hitstop_paths,
+		"rng_state": rng.state,
 	}
 
 
 func load_state(state: Dictionary) -> void:
 	frame = state["frame"]
 	_slowdown_accum = state["slowdown_accum"]
+	rng.state = state["rng_state"]
 	_hitstop_until.clear()
 	var hitstop_paths: Dictionary = state["hitstop"]
 	for path in hitstop_paths:

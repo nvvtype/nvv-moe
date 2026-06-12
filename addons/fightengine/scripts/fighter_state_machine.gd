@@ -38,9 +38,14 @@ enum State {
 	DASH, BACKDASH, AIR_DASH,
 	ATTACK,
 	HITSTUN, BLOCKSTUN, KNOCKDOWN, GETUP,
-	DIZZY, GUARD_CRUSH, TAUNT,
+	DIZZY, GUARD_CRUSH, TAUNT, LANDING,
 	CUSTOM,
 }
+
+const _NO_ACT_STATES: Array[State] = [
+	State.HITSTUN, State.BLOCKSTUN, State.KNOCKDOWN, State.GETUP,
+	State.DIZZY, State.GUARD_CRUSH, State.LANDING,
+]
 
 ## Auto-detected from the parent when unset.
 @export var fighter: Fighter2D
@@ -59,6 +64,18 @@ enum State {
 ## Frames of the getup animation after a knockdown ends.
 @export var getup_frames: int = 10
 
+@export_group("Wakeup & reversals")
+## Mashing during a soft knockdown shortens it to this many remaining
+## frames (quick rise). Hard knockdowns can't be quick risen.
+@export var quick_rise_enabled: bool = true
+@export var quick_rise_frames: int = 6
+## Holding back when getting up shifts the fighter backward (back rise).
+@export var back_rise_distance: float = 40.0
+## Commands entered during stun/getup within this many frames of becoming
+## actionable come out on the first actionable frame (wakeup DPs, reversal
+## supers). 0 = no reversal buffer.
+@export var reversal_window: int = 5
+
 @export_group("Taunt")
 ## Button that taunts from neutral. Empty = no taunt.
 @export var taunt_button: String = ""
@@ -75,6 +92,9 @@ var _hit_segment: int = -1
 var _dash_motion: MotionInput
 var _backdash_motion: MotionInput
 var _superjump_queued: bool = false
+var _queued_move: MoveData = null
+var _queued_frames: int = 0
+var _kd_hard: bool = false
 
 
 func _ready() -> void:
@@ -104,6 +124,7 @@ func _ready() -> void:
 	_backdash_motion.max_duration = 11
 
 	fighter.hit_taken.connect(_on_hit_taken)
+	fighter.wall_splatted.connect(func() -> void: _play(&"wall_splat", &"hitstun"))
 	fighter.knocked_down.connect(_on_knocked_down)
 	fighter.got_up.connect(_on_got_up)
 	fighter.stun_ended.connect(_on_stun_ended)
@@ -137,14 +158,20 @@ func _physics_process(_delta: float) -> void:
 	if FightClock.active != null and FightClock.active.is_frozen(fighter):
 		return
 	state_frames += 1
+	if _queued_frames > 0:
+		_queued_frames -= 1
+		if _queued_frames == 0:
+			_queued_move = null
 
 	match state:
 		State.IDLE, State.WALK_F, State.WALK_B, State.CROUCH:
-			_tick_locomotion()
+			if not _try_queued_move():
+				_tick_locomotion()
 		State.PREJUMP:
 			_tick_prejump()
 		State.AIR:
-			_tick_air()
+			if not _try_queued_move():
+				_tick_air()
 		State.DASH:
 			_tick_dash()
 		State.BACKDASH:
@@ -155,7 +182,9 @@ func _physics_process(_delta: float) -> void:
 			_tick_attack()
 		State.DIZZY:
 			_tick_dizzy()
-		State.GETUP, State.TAUNT:
+		State.KNOCKDOWN:
+			_tick_knockdown()
+		State.GETUP, State.TAUNT, State.LANDING:
 			_tick_timed_state()
 		State.CUSTOM:
 			_on_custom_state()
@@ -215,6 +244,9 @@ func _enter(new_state: State) -> void:
 			if taunt_gives_opponent_meter > 0 and fighter.opponent != null \
 					and fighter.opponent.meter != null:
 				fighter.opponent.meter.gain(taunt_gives_opponent_meter)
+		State.LANDING:
+			fighter.velocity.x = 0.0
+			_play(&"landing", &"idle")
 		_:
 			pass
 	if old != new_state:
@@ -341,6 +373,13 @@ func _tick_air() -> void:
 		var drift := 1.0 if dir == 9 else (-1.0 if dir == 7 else 0.0)
 		fighter.velocity.x = drift * fighter.data.walk_speed * fighter.facing_sign()
 		_play(&"jump")
+	# Fastfall: fresh down press while falling.
+	if fighter.data != null and fighter.data.fastfall_speed > 0.0 \
+			and fighter.velocity.y > 0.0:
+		var down_now := buffer.direction() <= 3
+		var down_before := buffer.direction(1) <= 3
+		if down_now and not down_before:
+			fighter.velocity.y = fighter.data.fastfall_speed
 	if fighter.velocity.y >= 0 and state_frames > 1:
 		_play_if_not(&"fall")
 
@@ -362,10 +401,23 @@ func _tick_air_dash() -> void:
 # --- Attacks -----------------------------------------------------------------
 
 func _on_move_detected(move: MoveData) -> void:
-	if state in [State.HITSTUN, State.BLOCKSTUN, State.KNOCKDOWN, State.GETUP,
-			State.DIZZY, State.GUARD_CRUSH]:
+	if state in _NO_ACT_STATES:
+		# Reversal buffer: hold the command and release it on the first
+		# actionable frame (wakeup DP, reversal super).
+		if reversal_window > 0:
+			_queued_move = move
+			_queued_frames = reversal_window
 		return
 	perform_move(move)
+
+
+func _try_queued_move() -> bool:
+	if _queued_move == null:
+		return false
+	var move := _queued_move
+	_queued_move = null
+	_queued_frames = 0
+	return perform_move(move)
 
 
 ## Tries to perform a move right now (used by command detection, TagTeam
@@ -422,6 +474,21 @@ func _tick_attack() -> void:
 		fighter.velocity = Vector2(
 			move.self_velocity.x * fighter.facing_sign(), move.self_velocity.y)
 
+	if fighter.move_has_connected and fighter.input_buffer != null \
+			and not fighter.is_airborne():
+		if move.jump_cancelable:
+			var buffer := fighter.input_buffer
+			if buffer.direction() >= 7 and buffer.direction(1) < 7:
+				_abort_move()
+				fighter.end_move()
+				_superjump_queued = _superjump_input(buffer)
+				_enter(State.PREJUMP)
+				return
+		if move.dash_cancelable and _try_dashes():
+			_abort_move()
+			fighter.end_move()
+			return
+
 	if _move_frames >= total:
 		_finish_move()
 
@@ -458,7 +525,7 @@ func _abort_move() -> void:
 
 # --- Stun & reaction states ---------------------------------------------------
 
-func _on_hit_taken(_attacker: Fighter2D, _data: HitData, blocked: bool) -> void:
+func _on_hit_taken(_attacker: Fighter2D, data: HitData, blocked: bool) -> void:
 	# Armor absorbs leave no stun behind; stay in the current state.
 	if not fighter.in_stun():
 		return
@@ -470,15 +537,33 @@ func _on_hit_taken(_attacker: Fighter2D, _data: HitData, blocked: bool) -> void:
 		_enter(State.BLOCKSTUN)
 	else:
 		_enter(State.HITSTUN)
+		if data.crumple_frames > 0 and not fighter.is_airborne():
+			_play(&"crumple", &"hitstun")
 
 
-func _on_knocked_down(_hard: bool) -> void:
+func _on_knocked_down(hard: bool) -> void:
+	_kd_hard = hard
 	_abort_move()
 	fighter.end_move()
 	_enter(State.KNOCKDOWN)
 
 
+func _tick_knockdown() -> void:
+	if _kd_hard or not quick_rise_enabled:
+		return
+	var buffer := fighter.input_buffer
+	if buffer != null and buffer.pressed_mask() != 0 \
+			and fighter.knockdown_frames > quick_rise_frames:
+		fighter.knockdown_frames = quick_rise_frames
+
+
 func _on_got_up() -> void:
+	# Back rise: holding back shifts the getup position.
+	var buffer := fighter.input_buffer
+	if buffer != null and back_rise_distance > 0.0:
+		var dir := buffer.direction()
+		if dir == 1 or dir == 4 or dir == 7:
+			fighter.global_position.x -= back_rise_distance * fighter.facing_sign()
 	_enter(State.GETUP)
 
 
@@ -496,7 +581,10 @@ func _on_landed() -> void:
 			and (fighter.current_move.allowed_situations & MoveData.Situation.AIRBORNE) != 0:
 		_finish_move()
 	elif state == State.AIR or state == State.AIR_DASH:
-		_enter(State.IDLE)
+		if fighter.data != null and fighter.data.landing_recovery_frames > 0:
+			_enter(State.LANDING)
+		else:
+			_enter(State.IDLE)
 
 
 func _on_forced_move(move: MoveData) -> void:
@@ -536,7 +624,11 @@ func _tick_dizzy() -> void:
 
 
 func _tick_timed_state() -> void:
-	var duration := getup_frames if state == State.GETUP else taunt_frames
+	var duration := taunt_frames
+	if state == State.GETUP:
+		duration = getup_frames
+	elif state == State.LANDING:
+		duration = fighter.data.landing_recovery_frames if fighter.data != null else 0
 	if state_frames >= duration:
 		_enter(State.IDLE)
 

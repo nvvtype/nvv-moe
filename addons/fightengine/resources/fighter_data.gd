@@ -40,6 +40,12 @@ extends Resource
 ## Marvel-style superjump (tap down, then up).
 @export var superjump_enabled: bool = false
 @export var superjump_velocity: float = -650.0
+## UMvC3-style 8-way air dash: the held direction steers air dashes.
+@export var eight_way_airdash: bool = false
+## Holding down while falling fastfalls at this speed. 0 = no fastfall.
+@export var fastfall_speed: float = 0.0
+## Frames of landing recovery after airtime (0 = none).
+@export var landing_recovery_frames: int = 0
 
 @export_group("Movelist")
 @export var moves: Array[MoveData] = []

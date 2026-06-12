@@ -29,6 +29,7 @@ FightEngine is **not** a MUGEN-compatible content engine: it's a Godot-native to
 | Strike / throw / projectile hit classes + per-class invulnerability | ✅ | `HitData.hit_class`, `HurtBox2D.invulnerability` |
 | Throws (grounded-only by default, kusoge override available) | ✅ | `HitData.HitClass.THROW` |
 | Projectiles with lifetime, hit count, and priority clashing | ✅ | `Projectile2D` (IKEMEN projpriority) |
+| Projectile durability (beams survive N clashes), delayed shots, traps | ✅ | `Projectile2D.durability`/`delay_frames` |
 | Trades (simultaneous hits) | 🧩 | Both `was_hit` signals fire the same frame; resolve per `HitData.priority` |
 | Corner push (attacker pushed back when victim is cornered) | ✅ | `Fighter2D` corner push (stage walls or `FightCamera2D` limits) |
 | Armor / hyper armor (absorb hits without stun) | ✅ | `Fighter2D.armor_hits` + `armor_damage_multiplier` |
@@ -58,6 +59,17 @@ The kusoge design template gets its own section. These are the systems that make
 | Wakeup invuln (okizeme dial) | ✅ | `Fighter2D.wakeup_invuln_frames` |
 | Dizzy state with mash-out, guard crush state, taunts (with meter gift) | ✅ | `FighterStateMachine` |
 | Lunging moves / slides / dive kick movement | ✅ | `MoveData.self_velocity` |
+| Crumple (collapse into hard knockdown, hittable) | ✅ | `HitData.crumple_frames` |
+| Wall splat (stick to wall, then collapse) | ✅ | `HitData.wall_splat_frames` |
+| Restand (forced back to standing hitstun mid-combo) | ✅ | `HitData.restand` |
+| Jump cancel / superjump cancel (launchers) | ✅ | `MoveData.jump_cancelable` |
+| Dash cancel pressure | ✅ | `MoveData.dash_cancelable` |
+| 8-way air dash (UMvC3) per character | ✅ | `FighterData.eight_way_airdash` |
+| Fastfall per character | ✅ | `FighterData.fastfall_speed` |
+| Landing recovery per character | ✅ | `FighterData.landing_recovery_frames` |
+| Quick rise / back rise, reversal input buffer | ✅ | `FighterStateMachine` wakeup exports |
+| Status effects: magnetism marks, curse build-up, poison ticks, stacks | ✅ | `StatusEffect` + `StatusComponent` + `HitData.applies_status` |
+| Puppet / trap / setplay objects | 🧩 | `Projectile2D` (delay + zero speed + long lifetime = trap); full puppets = a second rig with `combatant`-owned boxes driven by your states |
 | Counter hits (CH damage + bonus hitstun, GGXX style) | ✅ | `Fighter2D.counter_hit_*`, `counter_hit` signal |
 | Instant block (GGXX: less blockstun + meter) | ✅ | `Fighter2D.instant_block_window`/`instant_block_advantage` |
 | Pushblock / advancing guard (Marvel) | ✅ | `Fighter2D.pushblock_*` |
@@ -94,6 +106,7 @@ The kusoge design template gets its own section. These are the systems that make
 | Command priority resolution (DP beats QCF, super beats special) | ✅ | `MoveData.priority` |
 | SOCD cleaning: neutral / last-wins / back-priority / raw | ✅ | `InputBuffer.socd_mode` |
 | Input recording & playback | ✅ | `InputRecorder` |
+| Macros (throw macro, burst macro, any-button-combo macro) | ✅ | `InputBuffer.macros` |
 | Per-player action prefixes (p1_/p2_, any device via InputMap) | ✅ | `InputBuffer.action_prefix` |
 | Button assist (one-button specials) | 🎮 | Make a `MoveData` with no motion and high priority |
 | Input display widget (training) | ✅ | `InputHistoryDisplay` |
@@ -133,6 +146,7 @@ The kusoge design template gets its own section. These are the systems that make
 | Feature | Status | Where |
 |---------|--------|-------|
 | Super meter with stocks (1000/stock, IKEMEN-style) | ✅ | `MeterComponent` |
+| Passive meter charge / drain over time (Melty MAX, install drain) | ✅ | `MeterComponent.passive_per_frame` |
 | Meter gain on hit / being hit / blocking | ✅ | `HitData.meter_gain_*` |
 | Meter costs on moves, checked before performing | ✅ | `MoveData.meter_cost`, `Fighter2D.can_perform()` |
 | Super flash (freeze opponent only) | ✅ | `FightClock.hitstop([opponent], frames)` |
@@ -215,6 +229,7 @@ The kusoge design template gets its own section. These are the systems that make
 | → State save/restore for the whole fight | ✅ | `StateSnapshotter` + `save_state()`/`load_state()` on `Fighter2D` (bundles health/meter/combo/inputs) and `FightClock` |
 | → Input-driven, frame-counted simulation | ✅ | Everything advances on `FightClock` frames from `InputBuffer` streams |
 | → Re-simulation driver (save, rewind, replay N frames) | 🚧 | Loop `StateSnapshotter.restore()` + injected inputs + manual ticks |
+| → Deterministic gameplay RNG (seeded, state in snapshots) | ✅ | `FightClock.rng`/`rng_seed` — all gameplay randomness goes through it |
 | → Determinism audit | 🚧 | Godot float physics needs auditing per platform; same-platform P2P is the realistic first target. Replacing `move_and_slide` with fixed-point box physics is the nuclear option if cross-platform sync drifts |
 | → Projectile pooling (so rolled-back fireballs can respawn) | 🚧 | |
 
@@ -298,6 +313,10 @@ Every switch that lets you break the game **on purpose**, in one place:
 - [x] FighterStateMachine: full character controller, frame-data-driven attacks
 - [x] Superjumps, run dashes, guts, wakeup invuln, dizzy/guard-crush states, taunts
 - [x] AUTHORING.md character creation guide
+- [x] Gap pass vs full-genre checklist: macros, status effects, crumple/wall
+      splat/restand, jump & dash cancels, 8-way airdash, fastfall, landing
+      recovery, reversal buffer, quick/back rise, projectile traps &
+      durability, passive meter, deterministic seeded RNG
 - [ ] Rollback netcode (re-simulation driver, determinism audit, projectile pooling)
 - [ ] Delay-based netplay (fallback while rollback bakes)
 - [ ] Demo scene updated to use the new systems end-to-end

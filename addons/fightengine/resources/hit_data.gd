@@ -62,11 +62,30 @@ enum KnockdownType { NONE, SOFT, HARD } ## SOFT can be teched, HARD cannot.
 ## Victim keeps sliding with horizontal momentum during the knockdown
 ## (Vampire Savior style sliding knockdown).
 @export var sliding_knockdown: bool = false
+## Restand: no launch — an airborne victim falls into grounded standing
+## hitstun instead (combo resets to standing, Marvel style).
+@export var restand: bool = false
+## Crumple: after hitstun the grounded victim collapses into a hard
+## knockdown, hittable the whole way (SF crumple). 0 = off; value = extra
+## crumple frames appended to hitstun.
+@export var crumple_frames: int = 0
+## Wall splat: the victim sticks to the wall for this many frames (hittable),
+## then falls into hard knockdown. 0 = off. Takes precedence over wall_bounce
+## and spends a wall bounce from the combo budget.
+@export var wall_splat_frames: int = 0
 
 @export_group("Guard & class")
 @export var guard_height: GuardHeight = GuardHeight.MID
 @export var air_blockable: bool = true
 @export var hit_class: HitClass = HitClass.STRIKE
+
+@export_group("Status")
+## Status effect applied to the victim on clean hit (magnetism, curse,
+## poison... see StatusEffect / StatusComponent).
+@export var applies_status: StatusEffect
+@export var status_stacks: int = 1
+## Also apply the status on block (pressure-marking moves).
+@export var status_on_block: bool = false
 
 @export_group("Special properties")
 ## Marvel snapback: on clean hit, forces the victim's TagTeam to switch

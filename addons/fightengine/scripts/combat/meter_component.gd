@@ -13,8 +13,26 @@ signal stock_spent(stocks: int)
 @export var initial_meter: int = 0
 ## Kusoge dial: meter gain multiplier. Crank it for a super-spam fest.
 @export var gain_multiplier: float = 1.0
+## Meter per logical frame: positive = Melty-style auto charge, negative =
+## install-style drain. 0 = off.
+@export var passive_per_frame: float = 0.0
 
 var value: int = 0
+
+var _passive_accum: float = 0.0
+
+
+func _physics_process(_delta: float) -> void:
+	if passive_per_frame == 0.0:
+		return
+	if FightClock.active != null and FightClock.active.is_paused:
+		return
+	_passive_accum += passive_per_frame
+	var whole := int(_passive_accum)
+	if whole != 0:
+		_passive_accum -= whole
+		value = clampi(value + whole, 0, max_value())
+		meter_changed.emit(value, max_value())
 
 
 func _ready() -> void:
@@ -63,9 +81,10 @@ func reset() -> void:
 
 ## Rollback / save-state support.
 func save_state() -> Dictionary:
-	return {"value": value}
+	return {"value": value, "passive_accum": _passive_accum}
 
 
 func load_state(state: Dictionary) -> void:
 	value = state["value"]
+	_passive_accum = state["passive_accum"]
 	meter_changed.emit(value, max_value())

@@ -24,6 +24,10 @@ const BUFFER_SIZE := 120
 @export var action_prefix: String = "p1_"
 ## Button names, in bit order. Button i maps to bit (1 << i).
 @export var buttons: PackedStringArray = PackedStringArray(["a", "b", "c"])
+## Macro actions: extra InputMap actions that press several buttons at once.
+## E.g. {"throw": ["l", "m"]} makes the action "p1_throw" press L+M together
+## — throw macro, burst macro, alpha counter macro, whatever.
+@export var macros: Dictionary = {}
 @export var socd_mode: SOCDMode = SOCDMode.NEUTRAL
 ## Mirrors left/right into back/forward. Drive this from Fighter2D.facing_right.
 var facing_right: bool = true
@@ -131,6 +135,10 @@ func _read_buttons() -> int:
 	for i in buttons.size():
 		if Input.is_action_pressed(action_prefix + buttons[i]):
 			mask |= 1 << i
+	for macro_name in macros:
+		if Input.is_action_pressed(action_prefix + macro_name):
+			for button in macros[macro_name]:
+				mask |= button_bit(button)
 	return mask
 
 

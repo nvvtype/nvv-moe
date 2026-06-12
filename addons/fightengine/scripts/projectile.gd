@@ -18,12 +18,20 @@ signal clashed(other: Projectile2D)
 @export var lifetime_frames: int = 180
 ## Hurtboxes this projectile can hit before despawning.
 @export var max_hits: int = 1
+## Frames before the projectile arms and starts moving (delayed shots,
+## traps: combine a delay with zero speed and a long lifetime).
+@export var delay_frames: int = 0
+## Clash points: how many losing/equal clashes this projectile survives
+## (beam durability). Each clash spends one; at zero it dies.
+@export var durability: int = 1
 @export var destroy_on_clash: bool = true
 
 var owner_fighter: Fighter2D = null
 var _direction: float = 1.0
 var _frames_left: int = 0
 var _hits_left: int = 0
+var _delay_left: int = 0
+var _durability_left: int = 0
 
 
 func _ready() -> void:
@@ -34,12 +42,16 @@ func _ready() -> void:
 				break
 	_frames_left = lifetime_frames
 	_hits_left = max_hits
+	_delay_left = delay_frames
+	_durability_left = maxi(durability, 1)
 	if hitbox != null:
 		hitbox.hit.connect(_on_hit)
 		hitbox.collision.connect(_on_box_collision)
 		if hitbox.hit_data != null:
 			hitbox.hit_data = hitbox.hit_data.duplicate()
 			hitbox.hit_data.hit_class = HitData.HitClass.PROJECTILE
+		if _delay_left > 0:
+			hitbox.is_active = false
 
 
 ## Configures ownership and direction. Call right after instantiating.
@@ -55,6 +67,12 @@ func launch(from: Fighter2D) -> void:
 
 func _physics_process(delta: float) -> void:
 	if FightClock.active != null and FightClock.active.is_frozen(self):
+		return
+
+	if _delay_left > 0:
+		_delay_left -= 1
+		if _delay_left == 0 and hitbox != null:
+			hitbox.is_active = true
 		return
 
 	position += Vector2(speed.x * _direction, speed.y) * delta
@@ -87,7 +105,9 @@ func _on_box_collision(collider: CollisionBox2D) -> void:
 		return  # We win; the other projectile handles its own demise.
 	clashed.emit(other_projectile)
 	if destroy_on_clash:
-		_expire()
+		_durability_left -= 1
+		if _durability_left <= 0:
+			_expire()
 
 
 func _expire() -> void:

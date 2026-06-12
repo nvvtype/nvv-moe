@@ -44,6 +44,8 @@ signal counter_hit(attacker: Fighter2D, data: HitData)
 signal instant_blocked
 signal ground_bounced
 signal wall_bounced
+signal wall_splatted
+signal crumpled
 ## This fighter recovered in the air after hitstun.
 signal air_teched
 signal air_dashed(forward: bool)
@@ -74,6 +76,8 @@ signal died
 @export var overdrive: OverdriveComponent
 ## Optional: Burst (see BurstSystem).
 @export var burst: BurstSystem
+## Optional: status effects (see StatusComponent).
+@export var status: StatusComponent
 
 @export_group("Stun tuning (frames)")
 @export var knockdown_frames_soft: int = 25
@@ -238,6 +242,7 @@ var _last_hit: HitData = null
 var _pending_ground_bounce: bool = false
 var _pending_wall_bounce: bool = false
 var _sliding_knockdown: bool = false
+var _crumpling: bool = false
 
 
 func _ready() -> void:
@@ -382,14 +387,22 @@ func jump() -> bool:
 	return false
 
 
-## Air dash (anime mobility). Kills vertical momentum on use.
+## Air dash (anime mobility). Kills vertical momentum on use. With
+## FighterData.eight_way_airdash on, the held direction steers the dash
+## (UMvC3 style); otherwise it's horizontal forward/back.
 ## Returns false when grounded or out of air dashes.
 func air_dash(forward: bool = true) -> bool:
 	if data == null or is_on_floor() or _air_dashes_left <= 0:
 		return false
 	_air_dashes_left -= 1
-	velocity.x = (1.0 if forward else -1.0) * facing_sign() * data.air_dash_speed
-	velocity.y = 0.0
+	var dash_dir := Vector2((1.0 if forward else -1.0) * facing_sign(), 0.0)
+	if data.eight_way_airdash and input_buffer != null:
+		var dir := input_buffer.direction()
+		if dir != 5:
+			var x := float(((dir - 1) % 3) - 1) * facing_sign()
+			var y := float(1 - ((dir - 1) / 3))
+			dash_dir = Vector2(x, y).normalized()
+	velocity = dash_dir * data.air_dash_speed
 	air_dashed.emit(forward)
 	return true
 
@@ -633,7 +646,10 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 	hitstun_frames = hit.hitstun
 	blockstun_frames = 0
 
-	if is_airborne() or hit.launch != Vector2.ZERO:
+	if hit.restand:
+		# No launch: fall (or stay) into grounded standing hitstun.
+		velocity = Vector2(hit.knockback.x * away, 0.0)
+	elif is_airborne() or hit.launch != Vector2.ZERO:
 		var launch := hit.launch if hit.launch != Vector2.ZERO else hit.knockback
 		velocity.x = launch.x * away
 		if launch.y != 0.0:
@@ -649,8 +665,18 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 		hitstun_frames += counter_hit_bonus_hitstun
 		counter_hit.emit(attacker, hit)
 
-	_pending_ground_bounce = hit.ground_bounce
-	_pending_wall_bounce = hit.wall_bounce
+	_crumpling = false
+	if hit.crumple_frames > 0 and not is_airborne():
+		hitstun_frames += hit.crumple_frames
+		_crumpling = true
+		crumpled.emit()
+
+	if hit.applies_status != null and status != null:
+		status.apply(hit.applies_status, hit.status_stacks)
+
+	_pending_ground_bounce = hit.ground_bounce and not hit.restand
+	_pending_wall_bounce = (hit.wall_bounce or hit.wall_splat_frames > 0) \
+			and not hit.restand
 	_pending_knockdown = hit.knockdown
 	if not is_airborne() and hit.knockdown != HitData.KnockdownType.NONE \
 			and hit.launch == Vector2.ZERO:
@@ -875,11 +901,15 @@ func _update_stun() -> void:
 		hitstun_frames -= 1
 		if hitstun_frames == 0:
 			if is_airborne():
-				if air_tech_enabled:
-					_air_tech()
-				else:
-					# MUGEN style: stay juggled until landing.
+				if _crumpling or not air_tech_enabled:
+					# Wall splat falling / MUGEN style: juggled until landing.
 					hitstun_frames = 1
+				else:
+					_air_tech()
+			elif _crumpling:
+				if combo_tracker != null:
+					combo_tracker.drop()
+				_enter_knockdown(true)
 			else:
 				if combo_tracker != null:
 					combo_tracker.drop()
@@ -915,11 +945,13 @@ func _check_landing() -> void:
 		if in_hitstun() and _pending_ground_bounce and _try_ground_bounce():
 			_was_airborne = false
 			return
-		if _pending_knockdown != HitData.KnockdownType.NONE and in_hitstun():
+		if in_hitstun() \
+				and (_pending_knockdown != HitData.KnockdownType.NONE or _crumpling):
 			hitstun_frames = 0
 			if combo_tracker != null:
 				combo_tracker.drop()
-			_enter_knockdown(_pending_knockdown == HitData.KnockdownType.HARD)
+			_enter_knockdown(
+				_crumpling or _pending_knockdown == HitData.KnockdownType.HARD)
 		_pending_knockdown = HitData.KnockdownType.NONE
 		_pending_ground_bounce = false
 		_pending_wall_bounce = false
@@ -950,6 +982,13 @@ func _check_wall_bounce(pre_move_vx: float) -> void:
 	if _last_hit == null:
 		return
 	if combo_tracker != null and not combo_tracker.try_use_wall_bounce():
+		return
+	if _last_hit.wall_splat_frames > 0:
+		# Stick to the wall (hittable), then collapse into hard knockdown.
+		velocity = Vector2.ZERO
+		hitstun_frames = maxi(hitstun_frames, _last_hit.wall_splat_frames)
+		_crumpling = true
+		wall_splatted.emit()
 		return
 	velocity.x = -pre_move_vx * _last_hit.wall_bounce_factor
 	if velocity.y > 0.0:
@@ -982,6 +1021,7 @@ func _enter_knockdown(hard: bool) -> void:
 	hitstun_frames = 0
 	blockstun_frames = 0
 	_pending_knockdown = HitData.KnockdownType.NONE
+	_crumpling = false
 	_sliding_knockdown = _last_hit != null and _last_hit.sliding_knockdown
 	if not _sliding_knockdown:
 		velocity.x = 0.0
@@ -1035,6 +1075,7 @@ func save_state() -> Dictionary:
 		"pending_ground_bounce": _pending_ground_bounce,
 		"pending_wall_bounce": _pending_wall_bounce,
 		"sliding_knockdown": _sliding_knockdown,
+		"crumpling": _crumpling,
 		"was_airborne": _was_airborne,
 		"last_hit": _last_hit,
 		"current_move_id": current_move.id if current_move != null else &"",
@@ -1046,6 +1087,7 @@ func save_state() -> Dictionary:
 		"barrier": barrier.save_state() if barrier != null else {},
 		"overdrive": overdrive.save_state() if overdrive != null else {},
 		"burst": burst.save_state() if burst != null else {},
+		"status": status.save_state() if status != null else {},
 	}
 
 
@@ -1068,6 +1110,7 @@ func load_state(state: Dictionary) -> void:
 	_pending_ground_bounce = state["pending_ground_bounce"]
 	_pending_wall_bounce = state["pending_wall_bounce"]
 	_sliding_knockdown = state["sliding_knockdown"]
+	_crumpling = state["crumpling"]
 	_was_airborne = state["was_airborne"]
 	_last_hit = state["last_hit"]
 	var move_id: StringName = state["current_move_id"]
@@ -1087,3 +1130,5 @@ func load_state(state: Dictionary) -> void:
 		overdrive.load_state(state["overdrive"])
 	if burst != null:
 		burst.load_state(state["burst"])
+	if status != null:
+		status.load_state(state["status"])

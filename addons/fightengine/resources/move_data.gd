@@ -70,6 +70,11 @@ enum Situation {
 @export var cancels_into: Array[StringName] = []
 ## Tags describing this move, matched against other moves' cancels_into.
 @export var tags: Array[StringName] = []
+## On contact, pressing up cancels this move into a jump (jump cancel /
+## superjump cancel — launchers in Marvel).
+@export var jump_cancelable: bool = false
+## On contact, a double-tap dash cancels this move (dash cancel pressure).
+@export var dash_cancelable: bool = false
 
 
 ## Total animation length implied by the frame data.

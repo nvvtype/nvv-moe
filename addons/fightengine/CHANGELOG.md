@@ -76,6 +76,21 @@ Everything on the original roadmap, plus the systems around it. See
   `FighterData` prejump/dash/run/superjump fields, guts curve on
   `HealthComponent`, wakeup invuln on `Fighter2D`, and `AUTHORING.md`
   (frame-data-first, 2–6 frame art workflow).
+- Hit reactions: crumple (`HitData.crumple_frames`), wall splat
+  (`HitData.wall_splat_frames`), restand (`HitData.restand`).
+- `StatusEffect` + `StatusComponent`: stacked/timed statuses with poison
+  ticks, max-stack triggers (curse/magnetism architecture), applied from
+  hits via `HitData.applies_status`.
+- Input macros (`InputBuffer.macros`): one action presses several buttons
+  (throw macro, burst macro).
+- Mobility: 8-way air dashes, fastfall, landing recovery (per character);
+  jump cancels and dash cancels per move; reversal input buffer, quick
+  rise, and back rise in `FighterStateMachine`.
+- `Projectile2D`: `delay_frames` (delayed shots / traps) and `durability`
+  (beams survive multiple clashes).
+- `MeterComponent.passive_per_frame` (auto charge or drain).
+- Deterministic seeded gameplay RNG on `FightClock` (state included in
+  snapshots for rollback).
 
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added
