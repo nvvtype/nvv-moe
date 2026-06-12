@@ -157,6 +157,20 @@ H performs the followup; in any other situation the followup is skipped by
 detection and H falls through to whatever else is legal (your j.H).
 Chains of followups = each followup lists the next in `cancels_into`.
 
+Same command, different move on the ground? Just add a sibling — detection
+skips whichever is illegal for the current situation, so the input falls
+through to the right one:
+
+```
+ground_214h:                               # e.g. a command overhead
+  id = &"ground_214h"        buttons = ["h"]
+  motion = MotionInput { sequence = [2, 1, 4] }
+  allowed_situations = Standing | Crouching   # dive kick is Airborne-only
+```
+
+(Tiger-knee inputs work as expected: 2147 + H right after takeoff still
+finds the 214 in the buffer and gives you the instant air dive kick.)
+
 ### Fireball that wall-bounces airborne opponents only
 
 One HitData with a conditional override:
