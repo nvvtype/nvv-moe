@@ -12,6 +12,12 @@ extends Node
 signal move_detected(move: MoveData)
 
 @export var input_buffer: InputBuffer
+## Optional context: when set, moves the fighter can't currently perform
+## (followup-only rekkas in neutral, supers without meter, wrong situation,
+## cancel rules) are skipped so the input falls through to the next match —
+## a meterless 236236H still gives you the fireball. FighterStateMachine
+## wires this automatically.
+@export var fighter: Fighter2D
 @export var moves: Array[MoveData] = []:
 	set(value):
 		moves = value
@@ -69,8 +75,11 @@ func detect() -> MoveData:
 		var press_age := _trigger_frame(move)
 		if press_age < 0:
 			continue
-		if move.motion == null or move.motion.matches(input_buffer, press_age):
-			return move
+		if move.motion != null and not move.motion.matches(input_buffer, press_age):
+			continue
+		if fighter != null and not fighter.can_cancel_into(move):
+			continue
+		return move
 	return null
 
 

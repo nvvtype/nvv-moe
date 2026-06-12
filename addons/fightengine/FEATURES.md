@@ -75,6 +75,9 @@ The kusoge design template gets its own section. These are the systems that make
 | Pushblock / advancing guard (Marvel) | ✅ | `Fighter2D.pushblock_*` |
 | Command grabs / air throws | ✅ | `THROW` class + `MotionInput`; air throws via `throws_ignore_state` or custom states |
 | Chain / gatling combos (magic series, L→M→H→S) | ✅ | `ChainRules` + `Fighter2D.can_cancel_into()`, enforced by `FighterStateMachine` |
+| Rekka followups (on-hit extensions that can't come out raw) | ✅ | `MoveData.followup_only` + `requires_clean_hit` + `cancels_into` routes |
+| Conditional hit reactions (different on air hit / counter hit) | ✅ | `HitData.air_override` / `counter_override` |
+| Context-aware command detection (meterless super falls through to special) | ✅ | `CommandInterpreter.fighter` |
 | EX / ES moves (two-button enhanced specials, Melty/Vampire) | ✅ | `MoveData.MoveType.EX_SPECIAL` + `require_all_buttons` + `meter_cost` |
 | Supers with meter costs & super flash | ✅ | `MoveData.meter_cost`, `FightClock.hitstop()` |
 | Roman cancel / rapid cancel (red RC contact rule, freeze pop) | ✅ | `Fighter2D.try_roman_cancel()` / `roman_cancel_*` exports |
@@ -233,6 +236,32 @@ The kusoge design template gets its own section. These are the systems that make
 | → Determinism audit in-engine | 🚧 | Run SYNCTEST first, then cross-machine; same-platform P2P is the realistic first target. Anim-driven moves (frame data = 0) are not rollback-safe — use frame data |
 | → Projectile pooling (so rolled-back fireballs can respawn) | 🚧 | Until then keep prediction windows short or pool projectiles yourself |
 | Delay-based netplay | ❌ superseded | Rollback shipped first; set `prediction_window = 0` if you really want to feel the lag |
+
+### Determinism notes
+
+Deterministic by design: fixed 60 Hz logic tick, integer frame counters
+everywhere, input-driven simulation (the whole sim replays from input
+streams), seeded gameplay RNG (`FightClock.rng`), snapshot-complete state,
+and `RollbackSession` ticking nodes manually in a fixed priority order.
+Presentation (camera shake, sparks, audio) deliberately lives outside the
+simulation and may use unseeded randomness freely.
+
+Known soft spots, in priority order:
+
+1. **Godot float physics** (`move_and_slide`, Area2D overlaps): bit-stable
+   on the same build/platform in practice; cross-platform determinism is
+   unproven. Mitigations that ship: SYNCTEST mode, online checksum desync
+   detection, and matching same-build players. The nuclear option, if
+   cross-platform drift shows up, is replacing movement with fixed-point
+   box arithmetic — the architecture confines that to `Fighter2D` and
+   `PushBox2D`.
+2. **Simultaneous-contact ordering**: when both fighters' hits land on the
+   exact same frame (trades), Area2D callback order isn't guaranteed by the
+   engine. Hardening item: a deterministic hit-resolution queue (collect
+   contacts, resolve in player order).
+3. **Anim-driven moves** (frame data = 0 uses the AnimationPlayer as the
+   timeline) are not rollback-safe — author frame data, which is the
+   default workflow anyway.
 
 ## 12. Content pipeline (IKEMEN: MUGEN compatibility, ZSS, Lua)
 

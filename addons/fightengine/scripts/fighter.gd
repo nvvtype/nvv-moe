@@ -221,6 +221,9 @@ var current_move: MoveData = null
 ## Whether the current move has touched the opponent (hit OR block).
 ## Used by chain/cancel rules; reset by [method begin_move].
 var move_has_connected: bool = false
+## Whether the current move landed CLEAN (unblocked) at least once.
+## Gates MoveData.requires_clean_hit followups.
+var move_hit_clean: bool = false
 ## Remaining armor hits. Set this from your states (e.g. during a move's
 ## startup) to absorb that many hits without taking stun or knockback.
 var armor_hits: int = 0
@@ -437,12 +440,14 @@ func begin_move(move: MoveData) -> bool:
 		return false
 	current_move = move
 	move_has_connected = false
+	move_hit_clean = false
 	return true
 
 
 func end_move() -> void:
 	current_move = null
 	move_has_connected = false
+	move_hit_clean = false
 
 
 ## Whether the current move may cancel into [param move] right now, using
@@ -453,16 +458,24 @@ func can_cancel_into(move: MoveData) -> bool:
 	if not can_perform(move):
 		return false
 	if current_move == null:
-		return true
+		# Raw performs: followups (rekkas) can't come out on their own.
+		return not move.followup_only
+	if move.requires_clean_hit and not move_hit_clean:
+		return false
+	# Followups route ONLY through an explicit cancels_into listing.
+	if move.followup_only:
+		return move_has_connected and _explicit_route(current_move, move)
 	var rules := data.chain_rules if data != null else null
 	if rules != null:
 		return rules.can_chain(current_move, move, move_has_connected)
-	if not move_has_connected:
-		return false
-	if move.id != &"" and current_move.cancels_into.has(move.id):
+	return move_has_connected and _explicit_route(current_move, move)
+
+
+func _explicit_route(from: MoveData, to: MoveData) -> bool:
+	if to.id != &"" and from.cancels_into.has(to.id):
 		return true
-	for tag in move.tags:
-		if current_move.cancels_into.has(tag):
+	for tag in to.tags:
+		if from.cancels_into.has(tag):
 			return true
 	return false
 
@@ -511,6 +524,11 @@ func _on_hurtbox_hit(hitbox: HitBox2D) -> void:
 
 func receive_hit(hitbox: HitBox2D) -> void:
 	var hit := hitbox.effective_hit_data()
+	# Conditional overrides: counter hit wins over air hit; no chaining.
+	if hit.counter_override != null and is_attacking():
+		hit = hit.counter_override
+	elif hit.air_override != null and is_airborne():
+		hit = hit.air_override
 	var attacker := hitbox.combatant as Fighter2D
 
 	if health != null and health.is_dead:
@@ -691,6 +709,8 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 ## Called on the attacker by the victim once a hit has fully resolved.
 func confirm_hit(victim: Fighter2D, hit: HitData, blocked: bool) -> void:
 	move_has_connected = true
+	if not blocked:
+		move_hit_clean = true
 	if meter != null:
 		meter.gain(hit.meter_gain_on_block if blocked else hit.meter_gain_attacker)
 	hit_landed.emit(victim, hit, blocked)
@@ -1080,6 +1100,7 @@ func save_state() -> Dictionary:
 		"last_hit": _last_hit,
 		"current_move_id": current_move.id if current_move != null else &"",
 		"move_has_connected": move_has_connected,
+		"move_hit_clean": move_hit_clean,
 		"health": health.save_state() if health != null else {},
 		"meter": meter.save_state() if meter != null else {},
 		"combo": combo_tracker.save_state() if combo_tracker != null else {},
@@ -1116,6 +1137,7 @@ func load_state(state: Dictionary) -> void:
 	var move_id: StringName = state["current_move_id"]
 	current_move = data.get_move(move_id) if (data != null and move_id != &"") else null
 	move_has_connected = state["move_has_connected"]
+	move_hit_clean = state["move_hit_clean"]
 	if health != null:
 		health.load_state(state["health"])
 	if meter != null:

@@ -42,6 +42,17 @@ enum KnockdownType { NONE, SOFT, HARD } ## SOFT can be teched, HARD cannot.
 ## Whether this hit can connect on a knocked-down victim (off-the-ground hit).
 @export var otg: bool = false
 
+@export_group("Conditional overrides")
+## If set, this entire HitData is replaced by [member air_override] when the
+## victim is airborne at the moment of contact. The standard "different
+## reaction on air hit" tool: e.g. a fireball that knocks back grounded
+## opponents but wall-bounces airborne ones (put wall_bounce on the override
+## only). Overrides do not chain (an override's own air_override is ignored).
+@export var air_override: HitData
+## Same, for counter hits (victim was mid-attack). Checked before
+## air_override; if both apply, counter wins.
+@export var counter_override: HitData
+
 @export_group("Bounces & air state (anime)")
 ## Victim bounces off the ground when landing during hitstun (Marvel-style
 ## ground bounce). Budgeted per combo by ComboTracker.

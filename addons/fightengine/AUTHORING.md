@@ -129,7 +129,55 @@ knockdown, getup, dizzy, guard_crush, taunt
   `FighterStateMachine`, call `_enter(State.CUSTOM)` and implement
   `_on_custom_state()`. Everything universal keeps working.
 
-## 7. The fight scene (1v1)
+## 7. Recipes
+
+### Dive kick with an on-hit followup (rekka)
+
+214H dive kick; if it connects **unblocked**, pressing H again does the
+extension. Two MoveData resources:
+
+```
+dive_kick:
+  id = &"dive_kick"          buttons = ["h"]
+  motion = MotionInput { sequence = [2, 1, 4] }
+  allowed_situations = Airborne
+  self_velocity = Vector2(300, 500)        # down-forward plunge
+  startup/active/recovery = 8/6/14
+  cancels_into = [&"dive_kick_followup"]   # opens the route
+
+dive_kick_followup:
+  id = &"dive_kick_followup" buttons = ["h"]
+  followup_only = true        # can never come out raw
+  requires_clean_hit = true   # blocked dive kick = no followup
+  priority = 10               # outranks plain H while the route is open
+```
+
+That's the whole rekka. While the dive kick is active and has landed clean,
+H performs the followup; in any other situation the followup is skipped by
+detection and H falls through to whatever else is legal (your j.H).
+Chains of followups = each followup lists the next in `cancels_into`.
+
+### Fireball that wall-bounces airborne opponents only
+
+One HitData with a conditional override:
+
+```
+fireball_h_hit:
+  damage = 90, hitstun = 18
+  knockback = Vector2(300, 0)        # grounded: pushed back
+  air_override = HitData:
+      damage = 90
+      launch = Vector2(250, -150)
+      wall_bounce = true             # airborne: rides to the wall, bounces
+      untech_frames = 30
+```
+
+Grounded victims get the knockback; airborne victims take the override
+wholesale (its launch, its wall bounce, its untech time). There's also
+`counter_override` for "this move crumples on counter hit" designs —
+counter wins when both apply.
+
+## 8. The fight scene (1v1)
 
 ```
 Fight (Node2D)

@@ -98,6 +98,11 @@ Everything on the original roadmap, plus the systems around it. See
   sync, checksum desync detection). `integrations/gekkonet/` ships a
   GDExtension wrapper scaffold for the GekkoNet C library as a drop-in
   alternative backend (no official Godot addon exists upstream).
+- Conditional move design: `MoveData.followup_only` + `requires_clean_hit`
+  (rekka followups that only exist after a clean hit), `HitData.air_override`
+  / `counter_override` (different reactions on air hit / counter hit), and
+  context-aware command detection (`CommandInterpreter.fighter` skips
+  currently-illegal moves so inputs fall through correctly).
 
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added

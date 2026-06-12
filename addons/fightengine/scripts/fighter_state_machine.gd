@@ -112,6 +112,8 @@ func _ready() -> void:
 	if interpreter != null:
 		if interpreter.input_buffer == null:
 			interpreter.input_buffer = fighter.input_buffer
+		if interpreter.fighter == null:
+			interpreter.fighter = fighter
 		if interpreter.moves.is_empty() and fighter.data != null:
 			interpreter.set_movelist(fighter.data.moves)
 		interpreter.move_detected.connect(_on_move_detected)

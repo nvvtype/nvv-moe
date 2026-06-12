@@ -75,6 +75,13 @@ enum Situation {
 @export var jump_cancelable: bool = false
 ## On contact, a double-tap dash cancels this move (dash cancel pressure).
 @export var dash_cancelable: bool = false
+## Followup move (rekka): can NEVER be performed raw — only by canceling
+## from a move that explicitly lists it in cancels_into (by id or tag).
+## E.g. a dive kick's "press H again" extension.
+@export var followup_only: bool = false
+## This move can only cancel in on a CLEAN (unblocked) hit of the previous
+## move. Off = hit or block both count, like normal chains.
+@export var requires_clean_hit: bool = false
 
 
 ## Total animation length implied by the frame data.
