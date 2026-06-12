@@ -30,10 +30,39 @@ FightEngine is **not** a MUGEN-compatible content engine: it's a Godot-native to
 | Throws (grounded-only by default, kusoge override available) | ✅ | `HitData.HitClass.THROW` |
 | Projectiles with lifetime, hit count, and priority clashing | ✅ | `Projectile2D` (IKEMEN projpriority) |
 | Trades (simultaneous hits) | 🧩 | Both `was_hit` signals fire the same frame; resolve per `HitData.priority` |
-| Corner push (attacker pushed back when victim is cornered) | 🚧 | Planned for `PushBox2D` + stage bounds |
-| Armor / hyper armor (absorb hits without stun) | 🧩 | Ignore `hit_taken` stun via custom state; dedicated armor HP planned 🚧 |
-| Counter hits (bonus damage/stun when interrupting startup) | 🧩 | Check `victim.is_attacking()` in `hit_taken` |
-| Throw teching | 🚧 | |
+| Corner push (attacker pushed back when victim is cornered) | ✅ | `Fighter2D` corner push (stage walls or `FightCamera2D` limits) |
+| Armor / hyper armor (absorb hits without stun) | ✅ | `Fighter2D.armor_hits` + `armor_damage_multiplier` |
+| Counter hits (bonus damage/stun when interrupting startup) | ✅ | `Fighter2D.counter_hit_multiplier`/`counter_hit_bonus_hitstun`, `counter_hit` signal |
+| Throw teching | ✅ | `Fighter2D.tech_buttons`/`tech_window`, `teched_throw` signal |
+| Intangibility windows (backdash invuln, tech invuln, wakeup) | ✅ | `Fighter2D.intangible_frames` |
+
+## 1.5 Anime fighter systems (Marvel 3 / Vampire Savior / GGXX / Melty Blood / BlazBlue)
+
+The kusoge design template gets its own section. These are the systems that make air-dash anime jank possible:
+
+| Feature | Status | Where |
+|---------|--------|-------|
+| OTG hits (hit them while they're down) | ✅ | `HitData.otg` |
+| Ground bounce (per-move property) | ✅ | `HitData.ground_bounce`/`ground_bounce_velocity` |
+| Wall bounce off walls & camera limits (per-move property) | ✅ | `HitData.wall_bounce`/`wall_bounce_factor` |
+| Per-combo bounce budgets (1 ground + 1 wall, anime standard) | ✅ | `ComboTracker.max_ground_bounces`/`max_wall_bounces` |
+| Untech time (air hitstun separate from ground hitstun) | ✅ | `HitData.untech_frames` |
+| Air teching with directional influence + tech invuln | ✅ | `Fighter2D.air_tech_enabled`/`air_tech_velocity`/`tech_invuln_frames` |
+| Sliding knockdowns (Vampire Savior style) | ✅ | `HitData.sliding_knockdown`, `Fighter2D.knockdown_friction` |
+| Double jumps / triple jumps | ✅ | `FighterData.air_jumps` |
+| Air dashes (count, speed, momentum kill) | ✅ | `FighterData.air_dashes`/`air_dash_speed`, `Fighter2D.air_dash()` |
+| Invuln backdashes | ✅ | `FighterData.backdash_invuln_frames`, `Fighter2D.backdash()` |
+| Counter hits (CH damage + bonus hitstun, GGXX style) | ✅ | `Fighter2D.counter_hit_*`, `counter_hit` signal |
+| Instant block (GGXX: less blockstun + meter) | ✅ | `Fighter2D.instant_block_window`/`instant_block_advantage` |
+| Pushblock / advancing guard (Marvel) | ✅ | `Fighter2D.pushblock_*` |
+| Command grabs / air throws | ✅ | `THROW` class + `MotionInput`; air throws via `throws_ignore_state` or custom states |
+| Chain / gatling combos (magic series) | 🧩 | `MoveData.cancels_into` tags; state machine enforces routes |
+| EX moves & supers with meter costs | ✅ | `MoveData.meter_cost`, `require_all_buttons` |
+| Roman cancel / rapid cancel | 🎮 | `end_move()` + `meter.try_spend()` + `FightClock.hitstop()`; ~10 lines in a state |
+| Burst (BlazBlue) | 🎮 | Meter + a 360° `HitBox2D` + `intangible_frames`; all pieces exist |
+| Vampire Savior round flow (no round resets, carry health) | 🎮 | Skip `reset_for_round()`, keep fighting |
+| Assists / strikers (Marvel) | 🚧 | Planned with tag support |
+| Dramatic super flash cinematics | ✅ | `FightClock.hitstop([opponent], frames)` freezes them mid-air |
 
 ## 2. Input (IKEMEN: command buffer, SOCD, button assist, ~~AI cheap inputs~~)
 
@@ -53,7 +82,7 @@ FightEngine is **not** a MUGEN-compatible content engine: it's a Godot-native to
 | Input recording & playback | ✅ | `InputRecorder` |
 | Per-player action prefixes (p1_/p2_, any device via InputMap) | ✅ | `InputBuffer.action_prefix` |
 | Button assist (one-button specials) | 🎮 | Make a `MoveData` with no motion and high priority |
-| Input display widget (training) | 🚧 | Data is already in the buffer; widget planned |
+| Input display widget (training) | ✅ | `InputHistoryDisplay` |
 
 ## 3. Offense (IKEMEN: juggle points, combo counter, score)
 
@@ -80,7 +109,7 @@ FightEngine is **not** a MUGEN-compatible content engine: it's a Godot-native to
 | Red life / recoverable health (IKEMEN red life) | ✅ | `HealthComponent.use_red_life`, `regen_tick()` |
 | Per-character defense multiplier | ✅ | `FighterData.defense` |
 | Invulnerability windows (strike/throw/projectile) | ✅ | Toggle `HurtBox2D.invulnerability` from animations |
-| Pushblock / advancing guard | 🚧 | |
+| Pushblock / advancing guard | ✅ | `Fighter2D.pushblock_*`, optional meter cost |
 | Burst / combo breakers | 🎮 | Spend meter, fire a `HitBox2D`; all pieces exist |
 
 ## 5. Resources & supers (IKEMEN: power bar, stocks)
@@ -144,8 +173,9 @@ FightEngine is **not** a MUGEN-compatible content engine: it's a Godot-native to
 | Slow motion | ✅ | `FightClock.slowdown` |
 | Dummy recording / playback / loop | ✅ | `InputRecorder` |
 | Dummy auto-block | ✅ | `Fighter2D.auto_block` |
-| Frame data display | 🚧 | Data exists on `MoveData`; overlay widget planned |
-| Frame advantage meter | 🚧 | |
+| Save states (snapshot / restore the whole fight) | ✅ | `StateSnapshotter` |
+| Frame data display | 🧩 | Data exists on `MoveData`; render with any Control |
+| Frame advantage meter | ✅ | `FrameAdvantageTracker` (+/- after every interaction) |
 
 ## 10. AI (IKEMEN: AI level, AI scaling, cheap-input AI)
 
@@ -162,7 +192,12 @@ FightEngine is **not** a MUGEN-compatible content engine: it's a Godot-native to
 | Deterministic-friendly architecture (frame-based, input-driven) | ✅ | Everything keys off `FightClock` frames and `InputBuffer` streams |
 | Replay recording / playback / serialization | ✅ | `InputRecorder.to_bytes()`/`from_bytes()` per player |
 | Delay-based netplay | 🚧 | Exchange `InputBuffer` frames per tick (the buffer's injection API is the integration point) |
-| Rollback netcode | ❌ for now | Needs full state serialization + Godot physics determinism work; revisit if the kusoge goes competitive (lol) |
+| **Rollback netcode** | 🚧 planned | This is the target netcode — delay-based alternatives are trash. Groundwork shipped: |
+| → State save/restore for the whole fight | ✅ | `StateSnapshotter` + `save_state()`/`load_state()` on `Fighter2D` (bundles health/meter/combo/inputs) and `FightClock` |
+| → Input-driven, frame-counted simulation | ✅ | Everything advances on `FightClock` frames from `InputBuffer` streams |
+| → Re-simulation driver (save, rewind, replay N frames) | 🚧 | Loop `StateSnapshotter.restore()` + injected inputs + manual ticks |
+| → Determinism audit | 🚧 | Godot float physics needs auditing per platform; same-platform P2P is the realistic first target. Replacing `move_and_slide` with fixed-point box physics is the nuclear option if cross-platform sync drifts |
+| → Projectile pooling (so rolled-back fireballs can respawn) | 🚧 | |
 
 ## 12. Content pipeline (IKEMEN: MUGEN compatibility, ZSS, Lua)
 
@@ -196,6 +231,11 @@ Every switch that lets you break the game **on purpose**, in one place:
 | `slowdown = 3` | The whole match in dramatic slow motion | `FightClock` |
 | `rehit_interval = 1` | A single hitbox that hits every frame | `HitBox2D` |
 | `juggle_cost = 0` | This move never juggle-protects | `HitData` |
+| `enable_bounce_limits = false` | Infinite wall bounce loops. Pong, but it's a person | `ComboTracker` |
+| `wall_bounce_factor = 2.0` | Victims come off the wall FASTER than they hit it | `HitData` |
+| `untech_frames = 600` | Ten full seconds of untechable airtime | `HitData` |
+| `air_tech_enabled = false` | MUGEN rules: juggled until you hit the floor | `Fighter2D` |
+| `throws_ignore_state + sliding_knockdown + otg` | The complete oki-from-hell starter kit | mixed |
 
 ---
 
@@ -215,11 +255,16 @@ Every switch that lets you break the game **on purpose**, in one place:
 - [x] Fight camera (framing, zoom, shake)
 - [x] Projectiles with clashing
 - [x] Input recording / replay serialization
-- [ ] Corner push
-- [ ] Throw teching
-- [ ] Pushblock / advancing guard
-- [ ] Armor hit absorption counters
-- [ ] Tag / turns team modes with red-life handoff
-- [ ] Training overlay widgets (input display, frame advantage)
-- [ ] Delay-based netplay
+- [x] Corner push
+- [x] Throw teching
+- [x] Pushblock / advancing guard
+- [x] Armor hit absorption counters
+- [x] Training overlay widgets (input display, frame advantage)
+- [x] Anime kit: ground/wall bounces, untech time, air tech, sliding knockdowns
+- [x] Counter hits, instant block, armor, intangibility windows
+- [x] Air dashes, double jumps, invuln backdashes
+- [x] Save states / rollback state serialization (`StateSnapshotter`)
+- [ ] Tag / turns team modes with red-life handoff + assists
+- [ ] Rollback netcode (re-simulation driver, determinism audit, projectile pooling)
+- [ ] Delay-based netplay (fallback while rollback bakes)
 - [ ] Demo scene updated to use the new systems end-to-end

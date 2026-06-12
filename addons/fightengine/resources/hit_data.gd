@@ -42,6 +42,27 @@ enum KnockdownType { NONE, SOFT, HARD } ## SOFT can be teched, HARD cannot.
 ## Whether this hit can connect on a knocked-down victim (off-the-ground hit).
 @export var otg: bool = false
 
+@export_group("Bounces & air state (anime)")
+## Victim bounces off the ground when landing during hitstun (Marvel-style
+## ground bounce). Budgeted per combo by ComboTracker.
+@export var ground_bounce: bool = false
+## Upward velocity of the ground bounce (negative = up), in px/s.
+@export var ground_bounce_velocity: float = -500.0
+## Victim bounces off walls / camera limits during hitstun (wall bounce).
+## Budgeted per combo by ComboTracker.
+@export var wall_bounce: bool = false
+## Fraction of the impact speed kept after a wall bounce. Over 1.0 = the
+## victim comes back FASTER. You know what to do.
+@export_range(0.0, 3.0) var wall_bounce_factor: float = 0.8
+## Hitstun refreshed when a bounce triggers, in frames.
+@export var bounce_hitstun: int = 20
+## Air untech time: overrides hitstun while the victim is airborne (0 = use
+## hitstun). The victim cannot air tech until it runs out.
+@export var untech_frames: int = 0
+## Victim keeps sliding with horizontal momentum during the knockdown
+## (Vampire Savior style sliding knockdown).
+@export var sliding_knockdown: bool = false
+
 @export_group("Guard & class")
 @export var guard_height: GuardHeight = GuardHeight.MID
 @export var air_blockable: bool = true

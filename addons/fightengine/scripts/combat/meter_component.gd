@@ -59,3 +59,13 @@ func try_spend_stocks(count: int) -> bool:
 func reset() -> void:
 	value = clampi(initial_meter, 0, max_value())
 	meter_changed.emit(value, max_value())
+
+
+## Rollback / save-state support.
+func save_state() -> Dictionary:
+	return {"value": value}
+
+
+func load_state(state: Dictionary) -> void:
+	value = state["value"]
+	meter_changed.emit(value, max_value())

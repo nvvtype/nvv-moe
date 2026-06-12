@@ -23,7 +23,7 @@ See **[FEATURES.md](FEATURES.md)** for the full feature list, mapped against IKE
 - **`InputRecorder`** — record/playback for training dummies and serializable replays.
 
 ### Characters
-- **`Fighter2D`** — base character: auto-registers boxes, resolves hits (guard, scaling, juggle, knockback, hitstop), tracks stun/knockdown/facing, exposes signals for your state machine and UI.
+- **`Fighter2D`** — base character: auto-registers boxes, resolves hits (guard, scaling, juggle, knockback, hitstop), tracks stun/knockdown/facing, exposes signals for your state machine and UI. Ships with the anime kit: ground/wall bounces, untech time, air teching, counter hits, instant block, pushblock, throw techs, armor, intangibility windows, air dashes, and invuln backdashes.
 - **`FighterData` / `MoveData`** — characters as resources: stats, mobility, and a movelist with commands, frame data, costs, and cancel tags.
 - **`HealthComponent`** — health, chip, red (recoverable) life, dizzy gauge, guard gauge.
 - **`MeterComponent`** — super meter with stocks.
@@ -34,6 +34,11 @@ See **[FEATURES.md](FEATURES.md)** for the full feature list, mapped against IKE
 - **`RoundManager`** — rounds, timer, KO / double KO / time over / perfect, match victory.
 - **`FightCamera2D`** — two-fighter framing, stage zoom, screen shake.
 - **`Projectile2D`** — fireballs with lifetime, hit counts, and priority-based clashing.
+- **`StateSnapshotter`** — save/restore the whole fight: training save states today, rollback netcode groundwork tomorrow.
+
+### Training
+- **`InputHistoryDisplay`** — on-screen input viewer (arrows + buttons + frame counts).
+- **`FrameAdvantageTracker`** — live +/- frame advantage after every interaction.
 
 ### State management
 - Demo uses [LimboAI](https://github.com/limbonaut/limboai) by [limbonaut](https://github.com/limbonaut) (MIT) for state machines. The core addon has **no hard dependency** on it — `Fighter2D` communicates through signals, so any FSM works.

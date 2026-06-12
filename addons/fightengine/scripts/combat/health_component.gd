@@ -152,3 +152,23 @@ func reset() -> void:
 	_red_life_accum = 0.0
 	health_changed.emit(current, max_health)
 	red_life_changed.emit(red_life)
+
+
+## Rollback / save-state support.
+func save_state() -> Dictionary:
+	return {
+		"current": current, "red_life": red_life,
+		"dizzy_points": dizzy_points, "guard_gauge": guard_gauge,
+		"is_dead": is_dead, "red_life_accum": _red_life_accum,
+	}
+
+
+func load_state(state: Dictionary) -> void:
+	current = state["current"]
+	red_life = state["red_life"]
+	dizzy_points = state["dizzy_points"]
+	guard_gauge = state["guard_gauge"]
+	is_dead = state["is_dead"]
+	_red_life_accum = state["red_life_accum"]
+	health_changed.emit(current, max_health)
+	red_life_changed.emit(red_life)

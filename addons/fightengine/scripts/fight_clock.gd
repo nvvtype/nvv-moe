@@ -102,3 +102,28 @@ func clear_hitstop(actor: Object = null) -> void:
 ## Advances exactly one logical frame while paused (training mode frame step).
 func step_frame() -> void:
 	_step_requested = true
+
+
+## Rollback / save-state support. Hitstop entries are stored by node path so
+## they survive a restore.
+func save_state() -> Dictionary:
+	var hitstop_paths := {}
+	for actor in _hitstop_until:
+		if actor is Node and (actor as Node).is_inside_tree():
+			hitstop_paths[(actor as Node).get_path()] = _hitstop_until[actor]
+	return {
+		"frame": frame,
+		"slowdown_accum": _slowdown_accum,
+		"hitstop": hitstop_paths,
+	}
+
+
+func load_state(state: Dictionary) -> void:
+	frame = state["frame"]
+	_slowdown_accum = state["slowdown_accum"]
+	_hitstop_until.clear()
+	var hitstop_paths: Dictionary = state["hitstop"]
+	for path in hitstop_paths:
+		var node := get_node_or_null(path)
+		if node != null:
+			_hitstop_until[node] = hitstop_paths[path]

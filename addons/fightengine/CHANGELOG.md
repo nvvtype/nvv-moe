@@ -35,6 +35,15 @@ Everything on the original roadmap, plus the systems around it. See
 - `FightCamera2D`: two-fighter framing, stage zoom, screen shake.
 - `Projectile2D`: lifetime, hit counts, priority-based projectile clashing.
 - `FEATURES.md`: full feature list referenced against IKEMEN GO.
+- Anime fighter kit on `Fighter2D`/`HitData`: ground bounce, wall bounce
+  (with per-combo budgets in `ComboTracker`), untech time, air teching with
+  directional influence and tech invuln, sliding knockdowns, counter hits,
+  instant block, pushblock/advancing guard, throw teching, armor hits,
+  intangibility windows, corner push, air dashes, and invuln backdashes.
+- `StateSnapshotter` + `save_state()`/`load_state()` across all gameplay
+  classes: training save states and the serialization half of rollback
+  netcode.
+- Training widgets: `InputHistoryDisplay`, `FrameAdvantageTracker`.
 
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added

@@ -194,6 +194,28 @@ func was_released(button: String, window: int = 1) -> bool:
 	return false
 
 
+## Rollback / save-state support. Packed arrays are copy-on-write, so this
+## is cheap until the buffer is written to again.
+func save_state() -> Dictionary:
+	return {
+		"dirs": _dirs.duplicate(), "held": _held.duplicate(),
+		"pressed": _pressed.duplicate(), "released": _released.duplicate(),
+		"head": _head, "count": _count, "frame_index": _frame_index,
+		"facing_right": facing_right,
+	}
+
+
+func load_state(state: Dictionary) -> void:
+	_dirs = state["dirs"]
+	_held = state["held"]
+	_pressed = state["pressed"]
+	_released = state["released"]
+	_head = state["head"]
+	_count = state["count"]
+	_frame_index = state["frame_index"]
+	facing_right = state["facing_right"]
+
+
 ## Number of consecutive past frames (starting [param from_frames_ago] ago)
 ## whose direction satisfies [param dirs]. Used for charge detection.
 func consecutive_direction_frames(dirs: PackedInt32Array, from_frames_ago: int = 0) -> int:

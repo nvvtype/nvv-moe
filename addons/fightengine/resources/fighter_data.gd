@@ -24,6 +24,12 @@ extends Resource
 ## Extra jumps available while airborne (0 = single jump, 1 = double jump...).
 @export var air_jumps: int = 0
 @export var air_dashes: int = 0
+## Horizontal speed of air dashes, in px/s.
+@export var air_dash_speed: float = 500.0
+@export var dash_speed: float = 300.0
+@export var backdash_speed: float = 350.0
+## Intangibility granted at the start of a backdash (anime backdash invuln).
+@export var backdash_invuln_frames: int = 8
 
 @export_group("Movelist")
 @export var moves: Array[MoveData] = []

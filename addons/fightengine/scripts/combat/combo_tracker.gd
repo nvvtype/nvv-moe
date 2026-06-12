@@ -20,6 +20,10 @@ signal combo_dropped(hits: int, total_damage: int)
 @export var min_scaling: float = 0.2
 ## Juggle points available per combo. Air hits spend HitData.juggle_cost.
 @export var juggle_pool: int = 15
+## Ground bounces allowed per combo (anime standard: 1).
+@export var max_ground_bounces: int = 1
+## Wall bounces allowed per combo (anime standard: 1).
+@export var max_wall_bounces: int = 1
 
 @export_group("Kusoge dials")
 ## Turn off to make every hit deal full damage, no matter the combo length.
@@ -29,10 +33,15 @@ signal combo_dropped(hits: int, total_damage: int)
 ## Hard cap on combo length; hits beyond it are juggle-protected.
 ## 0 = unlimited. Leave at 0 if you want your infinites.
 @export var max_combo_hits: int = 0
+## Turn off to allow unlimited ground and wall bounces per combo.
+## Wall bounce loops forever. Welcome to the kusoge zone.
+@export var enable_bounce_limits: bool = true
 
 var hits: int = 0
 var total_damage: int = 0
 var juggle_points: int = 0
+var ground_bounces_used: int = 0
+var wall_bounces_used: int = 0
 var attacker: Node = null
 var active: bool = false
 
@@ -66,6 +75,26 @@ func try_spend_juggle(cost: int) -> bool:
 	return true
 
 
+## Spends a ground bounce from the combo budget. Returns false if exhausted.
+func try_use_ground_bounce() -> bool:
+	if not enable_bounce_limits:
+		return true
+	if active and ground_bounces_used >= max_ground_bounces:
+		return false
+	ground_bounces_used += 1
+	return true
+
+
+## Spends a wall bounce from the combo budget. Returns false if exhausted.
+func try_use_wall_bounce() -> bool:
+	if not enable_bounce_limits:
+		return true
+	if active and wall_bounces_used >= max_wall_bounces:
+		return false
+	wall_bounces_used += 1
+	return true
+
+
 ## Called by Fighter2D when a clean hit connects on this fighter.
 func register_hit(from_attacker: Node, damage_dealt: int) -> void:
 	if not active:
@@ -73,6 +102,8 @@ func register_hit(from_attacker: Node, damage_dealt: int) -> void:
 		hits = 0
 		total_damage = 0
 		juggle_points = juggle_pool
+		ground_bounces_used = 0
+		wall_bounces_used = 0
 		attacker = from_attacker
 		combo_started.emit(attacker)
 	hits += 1
@@ -94,4 +125,25 @@ func reset() -> void:
 	hits = 0
 	total_damage = 0
 	juggle_points = juggle_pool
+	ground_bounces_used = 0
+	wall_bounces_used = 0
 	attacker = null
+
+
+## Rollback / save-state support.
+func save_state() -> Dictionary:
+	return {
+		"hits": hits, "total_damage": total_damage,
+		"juggle_points": juggle_points, "active": active,
+		"ground_bounces_used": ground_bounces_used,
+		"wall_bounces_used": wall_bounces_used,
+	}
+
+
+func load_state(state: Dictionary) -> void:
+	hits = state["hits"]
+	total_damage = state["total_damage"]
+	juggle_points = state["juggle_points"]
+	active = state["active"]
+	ground_bounces_used = state["ground_bounces_used"]
+	wall_bounces_used = state["wall_bounces_used"]

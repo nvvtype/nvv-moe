@@ -16,6 +16,24 @@ extends CharacterBody2D
 
 signal hit_landed(victim: Fighter2D, data: HitData, blocked: bool)
 signal hit_taken(attacker: Fighter2D, data: HitData, blocked: bool)
+## This fighter teched a throw attempted by [param attacker].
+signal teched_throw(attacker: Fighter2D)
+## This fighter's throw got teched by [param victim].
+signal throw_was_teched(victim: Fighter2D)
+## This fighter absorbed a hit with armor (damage taken, no stun).
+signal armor_absorbed(attacker: Fighter2D, data: HitData)
+## This fighter pushblocked and shoved the opponent away.
+signal pushblocked
+## This fighter got counter hit (was hit during its own attack).
+signal counter_hit(attacker: Fighter2D, data: HitData)
+## This fighter blocked within the instant block window.
+signal instant_blocked
+signal ground_bounced
+signal wall_bounced
+## This fighter recovered in the air after hitstun.
+signal air_teched
+signal air_dashed(forward: bool)
+signal backdashed
 signal stun_ended
 signal knocked_down(hard: bool)
 signal got_up
@@ -40,6 +58,64 @@ signal died
 @export_group("Stun tuning (frames)")
 @export var knockdown_frames_soft: int = 25
 @export var knockdown_frames_hard: int = 45
+## Friction applied to sliding knockdowns, in px/s lost per frame.
+@export var knockdown_friction: float = 30.0
+
+@export_group("Air tech")
+## Automatically recover in the air when air hitstun/untech time runs out
+## (Marvel/Melty style). Off = stay juggled until landing (MUGEN style).
+@export var air_tech_enabled: bool = true
+## Tech velocity; X is steered by held direction (forward/neutral/back).
+@export var air_tech_velocity: Vector2 = Vector2(150, -250)
+## Intangibility granted on air tech, in frames.
+@export var tech_invuln_frames: int = 10
+
+@export_group("Counter hits")
+## Damage multiplier when the victim was hit out of its own attack.
+@export var counter_hit_multiplier: float = 1.2
+## Extra hitstun on counter hit, in frames.
+@export var counter_hit_bonus_hitstun: int = 4
+
+@export_group("Instant block")
+## Blocking within this many frames of holding back counts as an instant
+## block (GGXX style). 0 = disabled.
+@export var instant_block_window: int = 0
+## Blockstun shaved off by an instant block, in frames.
+@export var instant_block_advantage: int = 4
+## Meter awarded for an instant block.
+@export var instant_block_meter_bonus: int = 50
+
+@export_group("Corner push")
+## When a cornered victim can't be pushed back any further, the attacker is
+## pushed away instead (IKEMEN corner push). Requires stage walls, or
+## FightCamera2D limits acting as the corner.
+@export var corner_push_enabled: bool = true
+## Fraction of the victim's pushback transferred to the attacker.
+@export var corner_push_factor: float = 1.0
+## How close to a camera limit counts as cornered, in pixels.
+@export var corner_margin: float = 24.0
+
+@export_group("Throw tech")
+@export var tech_enabled: bool = true
+## Buttons that tech throws (any of them, pressed within the tech window).
+@export var tech_buttons: PackedStringArray = PackedStringArray(["a"])
+## Frames before the throw connects in which a tech input counts.
+@export var tech_window: int = 8
+## Pushback applied to both fighters on a successful tech, in px/s.
+@export var tech_pushback: float = 250.0
+
+@export_group("Pushblock")
+## Advancing guard: pressing the pushblock buttons during blockstun shoves
+## the opponent away.
+@export var pushblock_enabled: bool = false
+## All of these must be pressed (within a 3-frame window) to pushblock.
+@export var pushblock_buttons: PackedStringArray = PackedStringArray(["a", "b"])
+@export var pushblock_force: float = 600.0
+@export var pushblock_meter_cost: int = 0
+
+@export_group("Armor")
+## Damage multiplier applied to hits absorbed by armor.
+@export var armor_damage_multiplier: float = 0.5
 
 @export_group("Kusoge dials")
 ## Throws connect even against airborne or stunned opponents (command-grab
@@ -69,12 +145,23 @@ var crouching: bool = false
 ## The move currently being performed, set by your state machine via
 ## [method begin_move] / [method end_move].
 var current_move: MoveData = null
+## Remaining armor hits. Set this from your states (e.g. during a move's
+## startup) to absorb that many hits without taking stun or knockback.
+var armor_hits: int = 0
+## Frames of full intangibility left (backdashes, techs, wakeup invuln).
+var intangible_frames: int = 0
 
 var gravity: float = float(ProjectSettings.get_setting("physics/2d/default_gravity", 980.0))
 
 var _pending_knockdown: int = HitData.KnockdownType.NONE
 var _was_airborne: bool = false
 var _air_jumps_left: int = 0
+var _air_dashes_left: int = 0
+var _pushblock_cooldown: int = 0
+var _last_hit: HitData = null
+var _pending_ground_bounce: bool = false
+var _pending_wall_bounce: bool = false
+var _sliding_knockdown: bool = false
 
 
 func _ready() -> void:
@@ -118,14 +205,18 @@ func _physics_process(delta: float) -> void:
 	_update_stun()
 	_update_crouching()
 	_update_facing()
+	_check_pushblock()
 
 	if not is_on_floor():
 		var scale_g := data.gravity_scale if data != null else 1.0
 		velocity.y += gravity * scale_g * delta
 	else:
 		_air_jumps_left = data.air_jumps if data != null else 0
+		_air_dashes_left = data.air_dashes if data != null else 0
 
+	var pre_move_vx := velocity.x
 	move_and_slide()
+	_check_wall_bounce(pre_move_vx)
 	_check_landing()
 
 
@@ -193,6 +284,28 @@ func jump() -> bool:
 		velocity.y = data.jump_velocity
 		return true
 	return false
+
+
+## Air dash (anime mobility). Kills vertical momentum on use.
+## Returns false when grounded or out of air dashes.
+func air_dash(forward: bool = true) -> bool:
+	if data == null or is_on_floor() or _air_dashes_left <= 0:
+		return false
+	_air_dashes_left -= 1
+	velocity.x = (1.0 if forward else -1.0) * facing_sign() * data.air_dash_speed
+	velocity.y = 0.0
+	air_dashed.emit(forward)
+	return true
+
+
+## Backdash with startup intangibility (anime backdash).
+func backdash() -> bool:
+	if data == null or not is_on_floor():
+		return false
+	velocity.x = -facing_sign() * data.backdash_speed
+	intangible_frames = maxi(intangible_frames, data.backdash_invuln_frames)
+	backdashed.emit()
+	return true
 
 
 # --- Move bookkeeping --------------------------------------------------------
@@ -264,11 +377,21 @@ func receive_hit(hitbox: HitBox2D) -> void:
 
 	if health != null and health.is_dead:
 		return
+	if intangible_frames > 0:
+		return
 	if is_knocked_down() and not hit.otg:
 		return
 	if hit.hit_class == HitData.HitClass.THROW and not throws_ignore_state:
 		if in_stun() or is_airborne():
 			return
+	if hit.hit_class == HitData.HitClass.THROW and _teched_throw():
+		var tech_away := _away_sign(hitbox)
+		velocity.x = tech_pushback * tech_away
+		if attacker != null:
+			attacker.velocity.x = tech_pushback * -tech_away
+			attacker.throw_was_teched.emit(self)
+		teched_throw.emit(attacker)
+		return
 	if combo_tracker != null:
 		if not combo_tracker.can_extend():
 			return
@@ -282,10 +405,22 @@ func receive_hit(hitbox: HitBox2D) -> void:
 	if FightClock.active != null:
 		FightClock.active.hitstop([self, attacker], hit.hitstop)
 
+	if not blocked and armor_hits > 0 and hit.hit_class != HitData.HitClass.THROW:
+		armor_hits -= 1
+		if health != null:
+			health.take_hit(hit, armor_damage_multiplier)
+		armor_absorbed.emit(attacker, hit)
+		_spawn_hit_effect(hit, hitbox)
+		hit_taken.emit(attacker, hit, false)
+		if attacker != null:
+			attacker.confirm_hit(self, hit, false)
+		return
+
 	if blocked:
 		_resolve_block(hit, away)
 	else:
 		_resolve_clean_hit(hit, attacker, away)
+	_apply_corner_push(attacker, away)
 
 	_spawn_hit_effect(hit, hitbox)
 	hit_taken.emit(attacker, hit, blocked)
@@ -295,6 +430,11 @@ func receive_hit(hitbox: HitBox2D) -> void:
 
 func _resolve_block(hit: HitData, away: float) -> void:
 	blockstun_frames = hit.blockstun
+	if _is_instant_block():
+		blockstun_frames = maxi(blockstun_frames - instant_block_advantage, 1)
+		if meter != null:
+			meter.gain(instant_block_meter_bonus)
+		instant_blocked.emit()
 	if health != null:
 		health.take_chip(hit)
 	if meter != null:
@@ -302,16 +442,28 @@ func _resolve_block(hit: HitData, away: float) -> void:
 	velocity.x = hit.block_pushback * away
 
 
+func _is_instant_block() -> bool:
+	if instant_block_window <= 0 or input_buffer == null or auto_block:
+		return false
+	var back_frames := input_buffer.consecutive_direction_frames(
+		PackedInt32Array([1, 4, 7])
+	)
+	return back_frames > 0 and back_frames <= instant_block_window
+
+
 func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 	# A hit on a non-stunned victim starts a fresh combo.
 	if combo_tracker != null and not in_hitstun():
 		combo_tracker.drop()
 
+	var is_counter := is_attacking()
 	var scaling := 1.0
 	if combo_tracker != null:
 		scaling = combo_tracker.damage_multiplier()
 	if attacker != null and attacker.data != null:
 		scaling *= attacker.data.attack
+	if is_counter:
+		scaling *= counter_hit_multiplier
 
 	var dealt := 0
 	if health != null:
@@ -321,6 +473,7 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 	if meter != null:
 		meter.gain(hit.meter_gain_victim)
 
+	_last_hit = hit
 	hitstun_frames = hit.hitstun
 	blockstun_frames = 0
 
@@ -329,11 +482,19 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 		velocity.x = launch.x * away
 		if launch.y != 0.0:
 			velocity.y = launch.y
+		if hit.untech_frames > 0:
+			hitstun_frames = hit.untech_frames
 	else:
 		velocity.x = hit.knockback.x * away
 		if hit.knockback.y != 0.0:
 			velocity.y = hit.knockback.y
 
+	if is_counter:
+		hitstun_frames += counter_hit_bonus_hitstun
+		counter_hit.emit(attacker, hit)
+
+	_pending_ground_bounce = hit.ground_bounce
+	_pending_wall_bounce = hit.wall_bounce
 	_pending_knockdown = hit.knockdown
 	if not is_airborne() and hit.knockdown != HitData.KnockdownType.NONE \
 			and hit.launch == Vector2.ZERO:
@@ -345,6 +506,63 @@ func confirm_hit(victim: Fighter2D, hit: HitData, blocked: bool) -> void:
 	if meter != null:
 		meter.gain(hit.meter_gain_on_block if blocked else hit.meter_gain_attacker)
 	hit_landed.emit(victim, hit, blocked)
+
+
+func _teched_throw() -> bool:
+	if not tech_enabled or input_buffer == null or in_stun():
+		return false
+	for button in tech_buttons:
+		if input_buffer.was_pressed(button, tech_window):
+			return true
+	return false
+
+
+func _check_pushblock() -> void:
+	if _pushblock_cooldown > 0:
+		_pushblock_cooldown -= 1
+		return
+	if not pushblock_enabled or not in_blockstun() or input_buffer == null:
+		return
+	if opponent == null or pushblock_buttons.is_empty():
+		return
+	var pressed_now := false
+	for button in pushblock_buttons:
+		if not input_buffer.was_pressed(button, 3):
+			return
+		if input_buffer.was_pressed(button, 1):
+			pressed_now = true
+	if not pressed_now:
+		return
+	if pushblock_meter_cost > 0 \
+			and (meter == null or not meter.try_spend(pushblock_meter_cost)):
+		return
+	var away := signf(opponent.global_position.x - global_position.x)
+	if away == 0.0:
+		away = facing_sign()
+	opponent.velocity.x = pushblock_force * away
+	_pushblock_cooldown = 20
+	pushblocked.emit()
+
+
+## Transfers pushback to the attacker when the victim is cornered.
+func _apply_corner_push(attacker: Fighter2D, away: float) -> void:
+	if not corner_push_enabled or attacker == null or is_airborne():
+		return
+	if not _is_cornered(away):
+		return
+	attacker.velocity.x = absf(velocity.x) * corner_push_factor * -away
+	velocity.x = 0.0
+
+
+func _is_cornered(push_direction: float) -> bool:
+	if is_on_wall():
+		return true
+	var cam := FightCamera2D.active
+	if cam == null:
+		return false
+	if push_direction < 0.0:
+		return global_position.x <= cam.limit_left + corner_margin
+	return global_position.x >= cam.limit_right - corner_margin
 
 
 func _away_sign(hitbox: HitBox2D) -> float:
@@ -376,18 +594,32 @@ func _spawn_hit_effect(hit: HitData, hitbox: HitBox2D) -> void:
 # --- Frame upkeep ------------------------------------------------------------
 
 func _update_stun() -> void:
+	if intangible_frames > 0:
+		intangible_frames -= 1
+
 	if knockdown_frames > 0:
 		knockdown_frames -= 1
+		if _sliding_knockdown:
+			velocity.x = move_toward(velocity.x, 0.0, knockdown_friction)
 		if knockdown_frames == 0:
+			_sliding_knockdown = false
+			velocity.x = 0.0
 			got_up.emit()
 		return
 
 	if hitstun_frames > 0:
 		hitstun_frames -= 1
 		if hitstun_frames == 0:
-			if combo_tracker != null and not is_airborne():
-				combo_tracker.drop()
-			stun_ended.emit()
+			if is_airborne():
+				if air_tech_enabled:
+					_air_tech()
+				else:
+					# MUGEN style: stay juggled until landing.
+					hitstun_frames = 1
+			else:
+				if combo_tracker != null:
+					combo_tracker.drop()
+				stun_ended.emit()
 
 	if blockstun_frames > 0:
 		blockstun_frames -= 1
@@ -416,14 +648,69 @@ func _update_facing() -> void:
 func _check_landing() -> void:
 	var airborne := not is_on_floor()
 	if _was_airborne and not airborne:
+		if in_hitstun() and _pending_ground_bounce and _try_ground_bounce():
+			_was_airborne = false
+			return
 		if _pending_knockdown != HitData.KnockdownType.NONE and in_hitstun():
 			hitstun_frames = 0
 			if combo_tracker != null:
 				combo_tracker.drop()
 			_enter_knockdown(_pending_knockdown == HitData.KnockdownType.HARD)
 		_pending_knockdown = HitData.KnockdownType.NONE
+		_pending_ground_bounce = false
+		_pending_wall_bounce = false
 		landed.emit()
 	_was_airborne = airborne
+
+
+func _try_ground_bounce() -> bool:
+	_pending_ground_bounce = false
+	if _last_hit == null:
+		return false
+	if combo_tracker != null and not combo_tracker.try_use_ground_bounce():
+		return false
+	velocity.y = _last_hit.ground_bounce_velocity
+	hitstun_frames = maxi(hitstun_frames, _last_hit.bounce_hitstun)
+	ground_bounced.emit()
+	return true
+
+
+func _check_wall_bounce(pre_move_vx: float) -> void:
+	if not in_hitstun() or not _pending_wall_bounce:
+		return
+	if absf(pre_move_vx) < 1.0:
+		return
+	if not _is_cornered(signf(pre_move_vx)):
+		return
+	_pending_wall_bounce = false
+	if _last_hit == null:
+		return
+	if combo_tracker != null and not combo_tracker.try_use_wall_bounce():
+		return
+	velocity.x = -pre_move_vx * _last_hit.wall_bounce_factor
+	if velocity.y > 0.0:
+		velocity.y = 0.0
+	hitstun_frames = maxi(hitstun_frames, _last_hit.bounce_hitstun)
+	wall_bounced.emit()
+
+
+func _air_tech() -> void:
+	var drift := 0.0
+	if input_buffer != null:
+		var dir := input_buffer.direction()
+		if dir == 6 or dir == 3 or dir == 9:
+			drift = 1.0
+		elif dir == 4 or dir == 1 or dir == 7:
+			drift = -1.0
+	velocity = Vector2(air_tech_velocity.x * drift * facing_sign(), air_tech_velocity.y)
+	intangible_frames = maxi(intangible_frames, tech_invuln_frames)
+	_pending_knockdown = HitData.KnockdownType.NONE
+	_pending_ground_bounce = false
+	_pending_wall_bounce = false
+	if combo_tracker != null:
+		combo_tracker.drop()
+	air_teched.emit()
+	stun_ended.emit()
 
 
 func _enter_knockdown(hard: bool) -> void:
@@ -431,6 +718,9 @@ func _enter_knockdown(hard: bool) -> void:
 	hitstun_frames = 0
 	blockstun_frames = 0
 	_pending_knockdown = HitData.KnockdownType.NONE
+	_sliding_knockdown = _last_hit != null and _last_hit.sliding_knockdown
+	if not _sliding_knockdown:
+		velocity.x = 0.0
 	knocked_down.emit(hard)
 
 
@@ -443,6 +733,78 @@ func reset_for_round() -> void:
 	hitstun_frames = 0
 	blockstun_frames = 0
 	knockdown_frames = 0
+	intangible_frames = 0
+	armor_hits = 0
 	current_move = null
 	velocity = Vector2.ZERO
 	_pending_knockdown = HitData.KnockdownType.NONE
+	_pending_ground_bounce = false
+	_pending_wall_bounce = false
+	_sliding_knockdown = false
+	_last_hit = null
+
+
+# --- Rollback / save-state support --------------------------------------------
+
+## Captures this fighter's gameplay state. Together with the component
+## save_state() methods (health, meter, combo) and FightClock, this is the
+## state set a rollback implementation or training-mode save state needs.
+## Restoring animation/state-machine pose is your state machine's job —
+## listen for load via [StateSnapshotter].
+func save_state() -> Dictionary:
+	return {
+		"position": global_position,
+		"velocity": velocity,
+		"facing_right": facing_right,
+		"crouching": crouching,
+		"hitstun": hitstun_frames,
+		"blockstun": blockstun_frames,
+		"knockdown": knockdown_frames,
+		"intangible": intangible_frames,
+		"armor": armor_hits,
+		"air_jumps_left": _air_jumps_left,
+		"air_dashes_left": _air_dashes_left,
+		"pushblock_cooldown": _pushblock_cooldown,
+		"pending_knockdown": _pending_knockdown,
+		"pending_ground_bounce": _pending_ground_bounce,
+		"pending_wall_bounce": _pending_wall_bounce,
+		"sliding_knockdown": _sliding_knockdown,
+		"was_airborne": _was_airborne,
+		"last_hit": _last_hit,
+		"current_move_id": current_move.id if current_move != null else &"",
+		"health": health.save_state() if health != null else {},
+		"meter": meter.save_state() if meter != null else {},
+		"combo": combo_tracker.save_state() if combo_tracker != null else {},
+		"input": input_buffer.save_state() if input_buffer != null else {},
+	}
+
+
+func load_state(state: Dictionary) -> void:
+	global_position = state["position"]
+	velocity = state["velocity"]
+	facing_right = state["facing_right"]
+	crouching = state["crouching"]
+	hitstun_frames = state["hitstun"]
+	blockstun_frames = state["blockstun"]
+	knockdown_frames = state["knockdown"]
+	intangible_frames = state["intangible"]
+	armor_hits = state["armor"]
+	_air_jumps_left = state["air_jumps_left"]
+	_air_dashes_left = state["air_dashes_left"]
+	_pushblock_cooldown = state["pushblock_cooldown"]
+	_pending_knockdown = state["pending_knockdown"]
+	_pending_ground_bounce = state["pending_ground_bounce"]
+	_pending_wall_bounce = state["pending_wall_bounce"]
+	_sliding_knockdown = state["sliding_knockdown"]
+	_was_airborne = state["was_airborne"]
+	_last_hit = state["last_hit"]
+	var move_id: StringName = state["current_move_id"]
+	current_move = data.get_move(move_id) if (data != null and move_id != &"") else null
+	if health != null:
+		health.load_state(state["health"])
+	if meter != null:
+		meter.load_state(state["meter"])
+	if combo_tracker != null:
+		combo_tracker.load_state(state["combo"])
+	if input_buffer != null:
+		input_buffer.load_state(state["input"])
