@@ -210,6 +210,7 @@ func save_state() -> Dictionary:
 		"pressed": _pressed.duplicate(), "released": _released.duplicate(),
 		"head": _head, "count": _count, "frame_index": _frame_index,
 		"facing_right": facing_right,
+		"last_press": _last_press_frame.duplicate(),
 	}
 
 
@@ -222,6 +223,7 @@ func load_state(state: Dictionary) -> void:
 	_count = state["count"]
 	_frame_index = state["frame_index"]
 	facing_right = state["facing_right"]
+	_last_press_frame = state["last_press"]
 
 
 ## Number of consecutive past frames (starting [param from_frames_ago] ago)

@@ -38,7 +38,9 @@ See **[FEATURES.md](FEATURES.md)** for the full feature list, mapped against IKE
 - **`RoundManager`** — rounds, timer, KO / double KO / time over / perfect, match victory.
 - **`FightCamera2D`** — two-fighter framing, stage zoom, screen shake.
 - **`Projectile2D`** — fireballs with lifetime, hit counts, and priority-based clashing.
-- **`StateSnapshotter`** — save/restore the whole fight: training save states today, rollback netcode groundwork tomorrow.
+- **`StateSnapshotter`** — save/restore the whole fight: training save states and the save/load half of rollback.
+- **`RollbackSession`** — rollback re-simulation driver: LOCAL tick driving, SYNCTEST (rewind + re-simulate + compare, for desync hunting), and ONLINE mode driving a rollback backend.
+- **`RollbackNetwork`** — pure-GDScript GGPO/GekkoNet-style P2P rollback over UDP: input prediction + delay, redundant input packets, time sync, checksum desync detection. Same contract as the optional GekkoNet C++ backend (`integrations/gekkonet/`).
 - **`TagTeam`** — tag and turns team play: raw tags with invuln entry, Marvel-style assist call-ins, benched red-life regen, KO fallthrough.
 
 ### Training

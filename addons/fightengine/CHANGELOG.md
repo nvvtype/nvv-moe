@@ -91,6 +91,13 @@ Everything on the original roadmap, plus the systems around it. See
 - `MeterComponent.passive_per_frame` (auto charge or drain).
 - Deterministic seeded gameplay RNG on `FightClock` (state included in
   snapshots for rollback).
+- Rollback netcode: `RollbackSession` (re-simulation tick driver with
+  LOCAL / SYNCTEST / ONLINE modes) and `RollbackNetwork` (pure-GDScript
+  GekkoNet/GGPO-strategy P2P UDP backend: input prediction and delay,
+  redundant input packets, rollback + re-simulate on misprediction, time
+  sync, checksum desync detection). `integrations/gekkonet/` ships a
+  GDExtension wrapper scaffold for the GekkoNet C library as a drop-in
+  alternative backend (no official Godot addon exists upstream).
 
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added

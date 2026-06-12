@@ -224,14 +224,15 @@ The kusoge design template gets its own section. These are the systems that make
 |---------|--------|-------|
 | Deterministic-friendly architecture (frame-based, input-driven) | ✅ | Everything keys off `FightClock` frames and `InputBuffer` streams |
 | Replay recording / playback / serialization | ✅ | `InputRecorder.to_bytes()`/`from_bytes()` per player |
-| Delay-based netplay | 🚧 | Exchange `InputBuffer` frames per tick (the buffer's injection API is the integration point) |
-| **Rollback netcode** | 🚧 planned | This is the target netcode — delay-based alternatives are trash. Groundwork shipped: |
-| → State save/restore for the whole fight | ✅ | `StateSnapshotter` + `save_state()`/`load_state()` on `Fighter2D` (bundles health/meter/combo/inputs) and `FightClock` |
-| → Input-driven, frame-counted simulation | ✅ | Everything advances on `FightClock` frames from `InputBuffer` streams |
-| → Re-simulation driver (save, rewind, replay N frames) | 🚧 | Loop `StateSnapshotter.restore()` + injected inputs + manual ticks |
-| → Deterministic gameplay RNG (seeded, state in snapshots) | ✅ | `FightClock.rng`/`rng_seed` — all gameplay randomness goes through it |
-| → Determinism audit | 🚧 | Godot float physics needs auditing per platform; same-platform P2P is the realistic first target. Replacing `move_and_slide` with fixed-point box physics is the nuclear option if cross-platform sync drifts |
-| → Projectile pooling (so rolled-back fireballs can respawn) | 🚧 | |
+| **Rollback netcode (GekkoNet/GGPO strategy, pure GDScript)** | ✅ | `RollbackNetwork` + `RollbackSession` — input prediction, save/rollback/re-simulate, input delay, redundant UDP input packets, time sync, checksum desync detection |
+| → State save/restore for the whole fight | ✅ | `StateSnapshotter` + `save_state()`/`load_state()` everywhere |
+| → Re-simulation driver (save, rewind, replay N frames) | ✅ | `RollbackSession` tick driver (takes over physics ticking, replays via `InputBuffer` playback) |
+| → Synctest mode (rewind + re-sim + compare every N frames, GGPO-style desync hunting) | ✅ | `RollbackSession.Mode.SYNCTEST` |
+| → Deterministic gameplay RNG (seeded, state in snapshots) | ✅ | `FightClock.rng`/`rng_seed` |
+| → GekkoNet C++ backend (same contract, swap-in) | 🧩 | `integrations/gekkonet/` GDExtension scaffold — no official Godot addon exists (only an Unreal wrapper), so compile this at home |
+| → Determinism audit in-engine | 🚧 | Run SYNCTEST first, then cross-machine; same-platform P2P is the realistic first target. Anim-driven moves (frame data = 0) are not rollback-safe — use frame data |
+| → Projectile pooling (so rolled-back fireballs can respawn) | 🚧 | Until then keep prediction windows short or pool projectiles yourself |
+| Delay-based netplay | ❌ superseded | Rollback shipped first; set `prediction_window = 0` if you really want to feel the lag |
 
 ## 12. Content pipeline (IKEMEN: MUGEN compatibility, ZSS, Lua)
 
@@ -317,6 +318,9 @@ Every switch that lets you break the game **on purpose**, in one place:
       splat/restand, jump & dash cancels, 8-way airdash, fastfall, landing
       recovery, reversal buffer, quick/back rise, projectile traps &
       durability, passive meter, deterministic seeded RNG
-- [ ] Rollback netcode (re-simulation driver, determinism audit, projectile pooling)
-- [ ] Delay-based netplay (fallback while rollback bakes)
+- [x] Rollback netcode: `RollbackNetwork` (GekkoNet-strategy, pure GDScript UDP)
+      + `RollbackSession` re-simulation driver + SYNCTEST + GekkoNet
+      GDExtension scaffold as alternative backend
+- [ ] Rollback hardening: in-engine synctest run, projectile pooling,
+      cross-machine determinism audit
 - [ ] Demo scene updated to use the new systems end-to-end

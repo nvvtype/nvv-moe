@@ -1,0 +1,22 @@
+#!/usr/bin/env python
+# Build: scons platform=<platform> target=template_release \
+#            godot_cpp_path=/path/to/godot-cpp gekkonet_path=/path/to/GekkoNet
+import os
+
+godot_cpp_path = ARGUMENTS.get("godot_cpp_path", "../godot-cpp")
+gekkonet_path = ARGUMENTS.get("gekkonet_path", "../GekkoNet")
+
+env = SConscript(os.path.join(godot_cpp_path, "SConstruct"))
+
+env.Append(CPPPATH=["src/", os.path.join(gekkonet_path, "GekkoLib", "include")])
+env.Append(LIBPATH=[os.path.join(gekkonet_path, "build", "out")])
+env.Append(LIBS=["GekkoNet"])
+
+sources = Glob("src/*.cpp")
+
+library = env.SharedLibrary(
+    "bin/libgekkonet_godot{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+    source=sources,
+)
+
+Default(library)
