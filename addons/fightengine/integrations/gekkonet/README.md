@@ -45,8 +45,9 @@ powers GekkoNet's desync detection).
    ```
 3. From this folder: `scons platform=<windows|linux|macos> target=template_release \
    godot_cpp_path=../path/to/godot-cpp gekkonet_path=../path/to/GekkoNet`
-4. Binaries land in `bin/`; `gekkonet.gdextension` picks them up. Restart
-   the editor.
+4. Binaries land in `bin/`; rename `gekkonet.gdextension.example` to
+   `gekkonet.gdextension` (it ships disabled so Godot doesn't complain
+   about missing binaries) and restart the editor.
 
 ## Wiring it up (ONLINE mode)
 

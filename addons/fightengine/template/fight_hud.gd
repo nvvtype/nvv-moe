@@ -170,7 +170,8 @@ func _wire() -> void:
 				func(_hits: int, _damage: int) -> void: label.text = "")
 
 	_rounds.timer_changed.connect(
-		func(seconds: int) -> void: _timer_label.text = str(seconds))
+		func(seconds: int) -> void:
+			_timer_label.text = "∞" if _rounds.round_time <= 0 else str(seconds))
 	if _rounds.round_time <= 0:
 		_timer_label.text = "∞"
 	_rounds.round_started.connect(_on_round_started)

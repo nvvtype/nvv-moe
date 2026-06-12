@@ -115,6 +115,23 @@ Everything on the original roadmap, plus the systems around it. See
   context-aware command detection (`CommandInterpreter.fighter` skips
   currently-illegal moves so inputs fall through correctly).
 
+- `TESTING.md`: first-run shakedown checklist for the in-editor pass.
+
+### Fixed (pre-flight sweep)
+- Fighters could block during their own moves when holding back, making
+  counter hits unreachable.
+- Projectile hits opened cancel windows on whatever move the owner was
+  doing (`confirm_hit` now distinguishes direct hits).
+- Buffered grounded attacks could eat prejump and cancel the jump;
+  commands during prejump now buffer and release on the first airborne
+  frame (free TK behavior).
+- Training "∞" timer label was overwritten by the round timer.
+- `RollbackSession` no longer snapshots every frame in LOCAL mode.
+- `TagTeam.call_assist` auto-performs the move when the assist runs the
+  built-in `FighterStateMachine` (no glue code).
+- GekkoNet `.gdextension` ships disabled (`.example`) so the editor
+  doesn't error about missing binaries before it's compiled.
+
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added
   `_on_activated()` hook and `get_box_rect()`.

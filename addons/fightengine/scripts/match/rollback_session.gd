@@ -126,7 +126,6 @@ func _physics_process(delta: float) -> void:
 		Mode.LOCAL:
 			_record_local_inputs()
 			_tick(delta)
-			_store_snapshot()
 		Mode.SYNCTEST:
 			_record_local_inputs()
 			_tick(delta)

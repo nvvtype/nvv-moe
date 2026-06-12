@@ -44,7 +44,7 @@ enum State {
 
 const _NO_ACT_STATES: Array[State] = [
 	State.HITSTUN, State.BLOCKSTUN, State.KNOCKDOWN, State.GETUP,
-	State.DIZZY, State.GUARD_CRUSH, State.LANDING,
+	State.DIZZY, State.GUARD_CRUSH, State.LANDING, State.PREJUMP,
 ]
 
 ## Auto-detected from the parent when unset.

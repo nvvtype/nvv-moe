@@ -498,6 +498,9 @@ func can_block(hit: HitData) -> bool:
 		return false
 	if is_knocked_down() or in_hitstun():
 		return false
+	# No blocking during your own move — that's what counter hits are.
+	if is_attacking():
+		return false
 	# Whiffed parry: guard is locked out.
 	if _parry_recovery_left > 0:
 		return false
@@ -572,7 +575,7 @@ func receive_hit(hitbox: HitBox2D) -> void:
 		_spawn_hit_effect(hit, hitbox)
 		hit_taken.emit(attacker, hit, false)
 		if attacker != null:
-			attacker.confirm_hit(self, hit, false)
+			attacker.confirm_hit(self, hit, false, attacker.boxes.has(hitbox))
 		return
 
 	if blocked:
@@ -584,7 +587,7 @@ func receive_hit(hitbox: HitBox2D) -> void:
 	_spawn_hit_effect(hit, hitbox)
 	hit_taken.emit(attacker, hit, blocked)
 	if attacker != null:
-		attacker.confirm_hit(self, hit, blocked)
+		attacker.confirm_hit(self, hit, blocked, attacker.boxes.has(hitbox))
 
 
 func _resolve_block(hit: HitData, away: float) -> void:
@@ -707,10 +710,13 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 
 
 ## Called on the attacker by the victim once a hit has fully resolved.
-func confirm_hit(victim: Fighter2D, hit: HitData, blocked: bool) -> void:
-	move_has_connected = true
-	if not blocked:
-		move_hit_clean = true
+## [param direct] is false for hits from detached sources (projectiles),
+## which confirm the hit but don't open cancel windows on the current move.
+func confirm_hit(victim: Fighter2D, hit: HitData, blocked: bool, direct: bool = true) -> void:
+	if direct:
+		move_has_connected = true
+		if not blocked:
+			move_hit_clean = true
 	if meter != null:
 		meter.gain(hit.meter_gain_on_block if blocked else hit.meter_gain_attacker)
 	hit_landed.emit(victim, hit, blocked)
@@ -886,7 +892,8 @@ func _away_sign(hitbox: HitBox2D) -> float:
 func _spawn_hit_effect(hit: HitData, hitbox: HitBox2D) -> void:
 	if hit.shake_intensity > 0.0 and FightCamera2D.active != null:
 		FightCamera2D.active.shake(hit.shake_intensity, hit.shake_frames)
-	if hit.effect_scene != null:
+	if hit.effect_scene != null and get_tree() != null \
+			and get_tree().current_scene != null:
 		var fx := hit.effect_scene.instantiate()
 		if fx is Node2D:
 			(fx as Node2D).global_position = \

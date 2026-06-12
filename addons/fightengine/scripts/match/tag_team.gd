@@ -148,6 +148,13 @@ func call_assist(move_id: StringName = &"") -> bool:
 	if move_id != &"" and helper.data != null:
 		move = helper.data.get_move(move_id)
 	assist_called.emit(helper, move)
+	# If the assist runs the built-in state machine, perform the move
+	# directly — no glue code needed.
+	if move != null:
+		for child in helper.get_children():
+			if child is FighterStateMachine:
+				(child as FighterStateMachine).perform_move(move)
+				break
 	return true
 
 
