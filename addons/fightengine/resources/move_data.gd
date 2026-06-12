@@ -10,7 +10,7 @@ extends Resource
 ## toggles hitboxes (typically via animation tracks keyed on
 ## HitBox2D.is_active).
 
-enum MoveType { NORMAL, COMMAND_NORMAL, SPECIAL, SUPER, THROW, MOVEMENT }
+enum MoveType { NORMAL, COMMAND_NORMAL, SPECIAL, EX_SPECIAL, SUPER, THROW, MOVEMENT }
 
 enum Situation {
 	STANDING = 1,

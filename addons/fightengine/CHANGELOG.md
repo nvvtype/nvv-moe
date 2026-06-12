@@ -46,6 +46,18 @@ Everything on the original roadmap, plus the systems around it. See
 - Training widgets: `InputHistoryDisplay`, `FrameAdvantageTracker`.
 - `TagTeam`: tag / turns team play with assist call-ins, invulnerable tag
   entries, benched red-life regen, and KO fallthrough.
+- `BurstSystem`: BB/GG-style burst with its own gauge, gold bursts, and a
+  configurable explosion hitbox.
+- `BarrierComponent`: Barrier / Faultless Defense with drain/regen gauge,
+  chip negation, pushback boost, universal air blocking, danger state.
+- `OverdriveComponent`: install/overdrive activations with opponent freeze,
+  low-health duration scaling, and stat multipliers applied engine-side.
+- `ChainRules`: magic series chain routing (LMHS), rapid-fire self-chains,
+  Melty-style reverse beat, category cancels, and whiff-cancel dial, used
+  by `Fighter2D.can_cancel_into()`.
+- Alpha counters (guard cancel attacks) on `Fighter2D` with meter cost,
+  invuln, and the `alpha_countered` signal.
+- `MoveData.MoveType.EX_SPECIAL` for EX/ES moves.
 
 ### Changed
 - `CollisionBox2D`: boxes now know their `combatant` and `team`; added

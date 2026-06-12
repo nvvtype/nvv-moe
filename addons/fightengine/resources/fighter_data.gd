@@ -33,6 +33,8 @@ extends Resource
 
 @export_group("Movelist")
 @export var moves: Array[MoveData] = []
+## Magic series / chain combo routing. Null = explicit cancels_into only.
+@export var chain_rules: ChainRules
 
 
 func get_move(id: StringName) -> MoveData:

@@ -57,9 +57,13 @@ The kusoge design template gets its own section. These are the systems that make
 | Pushblock / advancing guard (Marvel) | ✅ | `Fighter2D.pushblock_*` |
 | Command grabs / air throws | ✅ | `THROW` class + `MotionInput`; air throws via `throws_ignore_state` or custom states |
 | Chain / gatling combos (magic series) | 🧩 | `MoveData.cancels_into` tags; state machine enforces routes |
-| EX moves & supers with meter costs | ✅ | `MoveData.meter_cost`, `require_all_buttons` |
+| EX / ES moves (two-button enhanced specials, Melty/Vampire) | ✅ | `MoveData.MoveType.EX_SPECIAL` + `require_all_buttons` + `meter_cost` |
+| Supers with meter costs & super flash | ✅ | `MoveData.meter_cost`, `FightClock.hitstop()` |
 | Roman cancel / rapid cancel | 🎮 | `end_move()` + `meter.try_spend()` + `FightClock.hitstop()`; ~10 lines in a state |
-| Burst (BlazBlue) | 🎮 | Meter + a 360° `HitBox2D` + `intangible_frames`; all pieces exist |
+| Alpha counter / Dead Angle / Counter Assault (guard cancel) | ✅ | `Fighter2D.alpha_counter_*`, `alpha_countered` signal |
+| Barrier / Faultless Defense (own gauge, no chip, mega pushback, air-blocks anything) | ✅ | `BarrierComponent` + danger state on depletion |
+| Burst with gauge, gold burst in neutral (BB/GGXX) | ✅ | `BurstSystem` (gauge fills passively + from damage taken) |
+| Overdrive / install activation (BB: low-health duration scaling, opponent freeze, buff multipliers) | ✅ | `OverdriveComponent`; character gimmicks hook `overdrive_started`/`is_active` |
 | Vampire Savior round flow (no round resets, carry health) | 🎮 | Skip `reset_for_round()`, keep fighting |
 | Assists / strikers (Marvel) | ✅ | `TagTeam.call_assist()` + `assist_called` signal |
 | Dramatic super flash cinematics | ✅ | `FightClock.hitstop([opponent], frames)` freezes them mid-air |
@@ -110,7 +114,9 @@ The kusoge design template gets its own section. These are the systems that make
 | Per-character defense multiplier | ✅ | `FighterData.defense` |
 | Invulnerability windows (strike/throw/projectile) | ✅ | Toggle `HurtBox2D.invulnerability` from animations |
 | Pushblock / advancing guard | ✅ | `Fighter2D.pushblock_*`, optional meter cost |
-| Burst / combo breakers | 🎮 | Spend meter, fire a `HitBox2D`; all pieces exist |
+| Burst / combo breakers | ✅ | `BurstSystem` |
+| Barrier / Faultless Defense | ✅ | `BarrierComponent` |
+| Alpha counters (guard cancel attacks) | ✅ | `Fighter2D.alpha_counter_*` |
 
 ## 5. Resources & supers (IKEMEN: power bar, stocks)
 
@@ -238,6 +244,11 @@ Every switch that lets you break the game **on purpose**, in one place:
 | `untech_frames = 600` | Ten full seconds of untechable airtime | `HitData` |
 | `air_tech_enabled = false` | MUGEN rules: juggled until you hit the floor | `Fighter2D` |
 | `throws_ignore_state + sliding_knockdown + otg` | The complete oki-from-hell starter kit | mixed |
+| `require_contact = false` | Whiff-cancel everything into everything | `ChainRules` |
+| `allow_reverse_beat = true` + `self_chain_buttons = ["l","m","h","s"]` | Every normal chains into every normal, forever | `ChainRules` |
+| `burst_cost_fraction = 0.1` | Ten bursts per gauge. Combos are a suggestion | `BurstSystem` |
+| Burst hitbox with real damage | The defensive mechanic is also your best move | `BurstSystem` + `HitData` |
+| `base_duration = 99999` | Permanent overdrive. Install: the character | `OverdriveComponent` |
 
 ---
 
@@ -267,6 +278,8 @@ Every switch that lets you break the game **on purpose**, in one place:
 - [x] Air dashes, double jumps, invuln backdashes
 - [x] Save states / rollback state serialization (`StateSnapshotter`)
 - [x] Tag / turns team modes with assists and benched red-life regen (`TagTeam`)
+- [x] Burst, Barrier/FD, Overdrive, alpha counters
+- [x] Magic series chain routing (`ChainRules`, LMHS, reverse beat), EX move type
 - [ ] Rollback netcode (re-simulation driver, determinism audit, projectile pooling)
 - [ ] Delay-based netplay (fallback while rollback bakes)
 - [ ] Demo scene updated to use the new systems end-to-end

@@ -24,6 +24,10 @@ signal throw_was_teched(victim: Fighter2D)
 signal armor_absorbed(attacker: Fighter2D, data: HitData)
 ## This fighter pushblocked and shoved the opponent away.
 signal pushblocked
+## This fighter triggered a guard cancel; perform [param move] in your states.
+signal alpha_countered(move: MoveData)
+## A hit was blocked with barrier / Faultless Defense.
+signal barrier_blocked_hit(data: HitData)
 ## This fighter got counter hit (was hit during its own attack).
 signal counter_hit(attacker: Fighter2D, data: HitData)
 ## This fighter blocked within the instant block window.
@@ -54,6 +58,12 @@ signal died
 @export var health: HealthComponent
 @export var meter: MeterComponent
 @export var combo_tracker: ComboTracker
+## Optional: Barrier / Faultless Defense (see BarrierComponent).
+@export var barrier: BarrierComponent
+## Optional: Overdrive / install state (see OverdriveComponent).
+@export var overdrive: OverdriveComponent
+## Optional: Burst (see BurstSystem).
+@export var burst: BurstSystem
 
 @export_group("Stun tuning (frames)")
 @export var knockdown_frames_soft: int = 25
@@ -84,6 +94,21 @@ signal died
 @export var instant_block_advantage: int = 4
 ## Meter awarded for an instant block.
 @export var instant_block_meter_bonus: int = 50
+
+@export_group("Alpha counter")
+## Guard cancel attack (SF Alpha counter / GG Dead Angle / BB Counter
+## Assault): during blockstun, pressing the trigger spends meter, cancels
+## blockstun, and emits [signal alpha_countered] with the configured move —
+## your state machine performs it.
+@export var alpha_counter_enabled: bool = false
+## Move (from FighterData.moves) used as the counterattack.
+@export var alpha_counter_move_id: StringName = &""
+## All of these pressed together (3-frame window) during blockstun trigger it.
+@export var alpha_counter_buttons: PackedStringArray = PackedStringArray(["m", "h"])
+## Optional motion requirement (e.g. 6 + buttons: sequence [6]).
+@export var alpha_counter_motion: MotionInput
+@export var alpha_counter_meter_cost: int = 1000
+@export var alpha_counter_invuln_frames: int = 12
 
 @export_group("Corner push")
 ## When a cornered victim can't be pushed back any further, the attacker is
@@ -145,6 +170,9 @@ var crouching: bool = false
 ## The move currently being performed, set by your state machine via
 ## [method begin_move] / [method end_move].
 var current_move: MoveData = null
+## Whether the current move has touched the opponent (hit OR block).
+## Used by chain/cancel rules; reset by [method begin_move].
+var move_has_connected: bool = false
 ## Remaining armor hits. Set this from your states (e.g. during a move's
 ## startup) to absorb that many hits without taking stun or knockback.
 var armor_hits: int = 0
@@ -223,6 +251,9 @@ func _physics_process(delta: float) -> void:
 	_update_crouching()
 	_update_facing()
 	_check_pushblock()
+	_check_alpha_counter()
+	if barrier != null:
+		barrier.frame_tick(_is_holding_barrier())
 
 	if not is_on_floor():
 		var scale_g := data.gravity_scale if data != null else 1.0
@@ -344,11 +375,35 @@ func begin_move(move: MoveData) -> bool:
 	if move.meter_cost > 0 and not meter.try_spend(move.meter_cost):
 		return false
 	current_move = move
+	move_has_connected = false
 	return true
 
 
 func end_move() -> void:
 	current_move = null
+	move_has_connected = false
+
+
+## Whether the current move may cancel into [param move] right now, using
+## the character's ChainRules (magic series, reverse beat, category
+## cancels) plus explicit MoveData.cancels_into routes. With no move active
+## it falls back to a plain [method can_perform] check.
+func can_cancel_into(move: MoveData) -> bool:
+	if not can_perform(move):
+		return false
+	if current_move == null:
+		return true
+	var rules := data.chain_rules if data != null else null
+	if rules != null:
+		return rules.can_chain(current_move, move, move_has_connected)
+	if not move_has_connected:
+		return false
+	if move.id != &"" and current_move.cancels_into.has(move.id):
+		return true
+	for tag in move.tags:
+		if current_move.cancels_into.has(tag):
+			return true
+	return false
 
 
 # --- Guard -------------------------------------------------------------------
@@ -373,7 +428,9 @@ func can_block(hit: HitData) -> bool:
 	if not in_blockstun() and not is_holding_back():
 		return false
 	if is_airborne():
-		return hit.air_blockable
+		if hit.air_blockable:
+			return true
+		return _is_holding_barrier() and barrier.air_blocks_everything
 	match hit.guard_height:
 		HitData.GuardHeight.HIGH:
 			return not crouching
@@ -452,11 +509,35 @@ func _resolve_block(hit: HitData, away: float) -> void:
 		if meter != null:
 			meter.gain(instant_block_meter_bonus)
 		instant_blocked.emit()
+
+	var pushback := hit.block_pushback
+	var barrier_on := _is_holding_barrier()
+	if barrier_on:
+		barrier.on_block(hit)
+		pushback *= barrier.pushback_multiplier
+		barrier_blocked_hit.emit(hit)
+
 	if health != null:
-		health.take_chip(hit)
+		var chip_hit := hit
+		if barrier_on and (barrier.negates_chip or barrier.protects_guard_gauge):
+			chip_hit = hit.duplicate() as HitData
+			if barrier.negates_chip:
+				chip_hit.chip_damage = 0
+			if barrier.protects_guard_gauge:
+				chip_hit.guard_damage = 0
+		health.take_chip(chip_hit)
 	if meter != null:
 		meter.gain(hit.meter_gain_victim)
-	velocity.x = hit.block_pushback * away
+	velocity.x = pushback * away
+
+
+func _is_holding_barrier() -> bool:
+	if barrier == null or not barrier.is_usable() or input_buffer == null:
+		return false
+	for button in barrier.barrier_buttons:
+		if not input_buffer.is_held(button):
+			return false
+	return true
 
 
 func _is_instant_block() -> bool:
@@ -479,6 +560,10 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 		scaling = combo_tracker.damage_multiplier()
 	if attacker != null and attacker.data != null:
 		scaling *= attacker.data.attack
+	if attacker != null and attacker.overdrive != null and attacker.overdrive.is_active:
+		scaling *= attacker.overdrive.attack_multiplier
+	if overdrive != null and overdrive.is_active:
+		scaling *= overdrive.defense_multiplier
 	if is_counter:
 		scaling *= counter_hit_multiplier
 
@@ -520,6 +605,7 @@ func _resolve_clean_hit(hit: HitData, attacker: Fighter2D, away: float) -> void:
 
 ## Called on the attacker by the victim once a hit has fully resolved.
 func confirm_hit(victim: Fighter2D, hit: HitData, blocked: bool) -> void:
+	move_has_connected = true
 	if meter != null:
 		meter.gain(hit.meter_gain_on_block if blocked else hit.meter_gain_attacker)
 	hit_landed.emit(victim, hit, blocked)
@@ -559,6 +645,30 @@ func _check_pushblock() -> void:
 	opponent.velocity.x = pushblock_force * away
 	_pushblock_cooldown = 20
 	pushblocked.emit()
+
+
+func _check_alpha_counter() -> void:
+	if not alpha_counter_enabled or not in_blockstun() or input_buffer == null:
+		return
+	var pressed_now := false
+	for button in alpha_counter_buttons:
+		if not input_buffer.was_pressed(button, 3):
+			return
+		if input_buffer.was_pressed(button, 1):
+			pressed_now = true
+	if not pressed_now:
+		return
+	if alpha_counter_motion != null and not alpha_counter_motion.matches(input_buffer):
+		return
+	if alpha_counter_meter_cost > 0 \
+			and (meter == null or not meter.try_spend(alpha_counter_meter_cost)):
+		return
+	blockstun_frames = 0
+	intangible_frames = maxi(intangible_frames, alpha_counter_invuln_frames)
+	var move: MoveData = null
+	if data != null and alpha_counter_move_id != &"":
+		move = data.get_move(alpha_counter_move_id)
+	alpha_countered.emit(move)
 
 
 ## Transfers pushback to the attacker when the victim is cornered.
@@ -789,10 +899,14 @@ func save_state() -> Dictionary:
 		"was_airborne": _was_airborne,
 		"last_hit": _last_hit,
 		"current_move_id": current_move.id if current_move != null else &"",
+		"move_has_connected": move_has_connected,
 		"health": health.save_state() if health != null else {},
 		"meter": meter.save_state() if meter != null else {},
 		"combo": combo_tracker.save_state() if combo_tracker != null else {},
 		"input": input_buffer.save_state() if input_buffer != null else {},
+		"barrier": barrier.save_state() if barrier != null else {},
+		"overdrive": overdrive.save_state() if overdrive != null else {},
+		"burst": burst.save_state() if burst != null else {},
 	}
 
 
@@ -817,6 +931,7 @@ func load_state(state: Dictionary) -> void:
 	_last_hit = state["last_hit"]
 	var move_id: StringName = state["current_move_id"]
 	current_move = data.get_move(move_id) if (data != null and move_id != &"") else null
+	move_has_connected = state["move_has_connected"]
 	if health != null:
 		health.load_state(state["health"])
 	if meter != null:
@@ -825,3 +940,9 @@ func load_state(state: Dictionary) -> void:
 		combo_tracker.load_state(state["combo"])
 	if input_buffer != null:
 		input_buffer.load_state(state["input"])
+	if barrier != null:
+		barrier.load_state(state["barrier"])
+	if overdrive != null:
+		overdrive.load_state(state["overdrive"])
+	if burst != null:
+		burst.load_state(state["burst"])

@@ -28,6 +28,10 @@ See **[FEATURES.md](FEATURES.md)** for the full feature list, mapped against IKE
 - **`HealthComponent`** — health, chip, red (recoverable) life, dizzy gauge, guard gauge.
 - **`MeterComponent`** — super meter with stocks.
 - **`ComboTracker`** — combo counting, damage scaling, IKEMEN-style juggle points.
+- **`ChainRules`** — magic series routing (L→M→H→S by default): self-chains, reverse beat, category cancels, whiff-cancel dial.
+- **`BurstSystem`** — BB/GG burst: own gauge, defensive + gold bursts, configurable explosion hitbox.
+- **`BarrierComponent`** — Barrier/Faultless Defense: gauge-draining enhanced guard, no chip, extra pushback, air-blocks anything, danger state.
+- **`OverdriveComponent`** — install/overdrive activations: opponent freeze, low-health duration scaling, attack/defense/meter buffs, hooks for character gimmicks.
 
 ### Match
 - **`FightClock`** — logical frame clock: hitstop (incl. one-sided super flash), pause, frame-step, slow motion.
@@ -47,7 +51,7 @@ See **[FEATURES.md](FEATURES.md)** for the full feature list, mapped against IKE
 ## Quick start
 
 1. Enable the plugin in **Project → Project Settings → Plugins**.
-2. Add InputMap actions for each player: `p1_up/down/left/right` and `p1_a`, `p1_b`, `p1_c` (and the `p2_` set).
+2. Add InputMap actions for each player: `p1_up/down/left/right` plus one per attack button — for a 4-button LMHS game: `p1_l`, `p1_m`, `p1_h`, `p1_s` (and the `p2_` set). Set `InputBuffer.buttons = ["l", "m", "h", "s"]` to match.
 3. Build a fighter scene:
    ```
    Fighter2D (CharacterBody2D)
