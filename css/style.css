@@ -1,110 +1,330 @@
 *,
 *::before,
 *::after {
-box-sizing: border-box;
+  box-sizing: border-box;
 }
 
-@font-face
-{
-  font-family:'haxrcorp';
+@font-face {
+  font-family: 'haxrcorp';
   src: url('ttf/haxrcorpttf.ttf');
+}
+
+:root {
+  --blue: rgb(0, 160, 250);
+  --blue-hi: rgb(0, 220, 255);
+  --jp-dim: rgb(110, 150, 200);
+  --pink: #e8417f;
+  --green: #789922;
+  --text: #e0e0e1;
+  --muted: #8a90a6;
+  --sidebar-w: 250px;
+  --pixel: haxrcorp, monospace;
+  --jp: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
   background-color: #000;
-  color: #E0E0E1;
-  background-image:
-  linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 1)),
-  url("../img/background.jpg");
-  background-position: center top;
-  background-repeat: no-repeat;
-  background-size: cover;
-  display: flex;
-  flex-direction: column;
+  color: var(--text);
   min-height: 100vh;
-  margin: 0;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: Helvetica, Arial, sans-serif;
+/* Background: the photo itself is dimmed (keeps its colour instead of going
+   murky under a black sheet), then darkened only behind the text column and
+   softly at the edges. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse at 70% 45%, transparent 45%, rgba(0, 0, 0, 0.5) 100%),
+    linear-gradient(to right, rgba(0, 0, 0, 0.72) 15%, rgba(0, 0, 0, 0.6) 62%, rgba(0, 0, 0, 0.15) 88%, transparent),
+    url("../img/background.jpg") center top / cover no-repeat;
+  filter: brightness(0.72) saturate(1.15);
 }
 
-.container {
-  min-height: 75vh;
-  max-width: 75vw;
-  margin-left: 10vw;
-  margin-top: 1vh;
+::selection {
+  background: var(--pink);
+  color: #000;
 }
 
-.reddit-text {
-  color: #789922;
+a {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--blue-hi);
+  text-decoration: underline;
 }
 
 /*--------------------------
  *
- *     MAIN BODY STUFF
+ *       SIDEBAR
  *
  - *-------------------------*/
 
-.content {
-  margin-top: 5px;
-  margin-left: 50px;
-  border: rgb(0,120,200);
-  border-style: inset;
-  padding: 50px;
-  background-color: rgb(4,4,12);
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  padding: 36px 28px 24px;
+  background: rgba(0, 0, 12, 0.82);
+  border-right: 1px solid rgba(0, 120, 200, 0.5);
 }
 
+.greeting {
+  font-family: var(--jp);
+  font-size: 26px;
+  color: rgb(0, 120, 255);
+  min-height: 1.4em;
+}
+
+.site-name {
+  display: block;
+  margin-top: 18px;
+  font: 64px/1 var(--pixel);
+  color: var(--blue);
+  text-shadow: 0 0 12px rgba(0, 160, 250, 0.5);
+}
+
+.site-name:hover {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.tagline {
+  margin-top: 4px;
+  font: 13px/1.4 var(--jp);
+  letter-spacing: 3px;
+  color: var(--jp-dim);
+}
+
+.nav {
+  list-style: none;
+  margin: 44px 0 0;
+  padding: 0;
+}
+
+.nav li + li {
+  margin-top: 6px;
+}
+
+.nav a {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font: 28px/1.2 var(--pixel);
+  color: var(--text);
+}
+
+.nav a::before {
+  content: ">";
+  color: var(--pink);
+  visibility: hidden;
+}
+
+.nav a:hover {
+  color: var(--blue-hi);
+  text-decoration: none;
+}
+
+.nav a:hover::before,
+.nav a[aria-current="page"]::before {
+  visibility: visible;
+}
+
+.nav a[aria-current="page"] {
+  color: var(--blue);
+}
+
+.nav .jp {
+  font: 12px/1 var(--jp);
+  letter-spacing: 2px;
+  color: var(--jp-dim);
+}
+
+.license {
+  margin-top: auto;
+  font: 15px/1.35 var(--pixel);
+  color: var(--muted);
+}
+
+.license p {
+  margin: 0;
+}
+
+/*--------------------------
+ *
+ *       MAIN CONTENT
+ *
+ - *-------------------------*/
+
+.main {
+  margin-left: var(--sidebar-w);
+  padding: 9vh 6vw 6vh;
+  max-width: calc(var(--sidebar-w) + 900px);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+h1 {
+  margin: 0;
+  font: normal 46px/1.1 var(--pixel);
+  color: var(--blue);
+  text-shadow: 0 0 10px rgba(0, 160, 250, 0.45);
+}
+
+.subtitle {
+  margin: 6px 0 34px;
+  font: 17px/1.4 var(--jp);
+  letter-spacing: 1px;
+  color: var(--jp-dim);
+}
+
+h2 {
+  margin: 0 0 10px;
+  font: normal 28px/1.2 var(--pixel);
+  color: var(--blue);
+}
+
+h2::before {
+  content: "✿\FE0E  ";
+  font-family: "Noto Sans Symbols 2", "Segoe UI Symbol", sans-serif;
+  color: var(--pink);
+}
+
+.main p {
+  margin: 0 0 1em;
+  max-width: 58ch;
+}
 
 #name {
-color: rgb(0, 160, 250);
-font-family: haxrcorp, monospace;
-font-size: 30px;
+  color: var(--blue);
+  font-family: var(--pixel);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.inline-link {
+  font-family: var(--pixel);
+  font-size: 1.35em;
 }
 
 #blue {
-color: lightblue;
+  color: var(--blue);
 }
 
 #pink {
-color:hotpink;
+  color: var(--pink);
+}
+
+.reddit-text,
+.greentext {
+  color: var(--green);
+}
+
+.greentext {
+  margin-top: 2em;
 }
 
 .funfacts {
   list-style: none;
-  color: #789922;
+  padding: 0;
+  margin: 0 0 1em;
+  color: var(--green);
 }
 
-.funfacts li:before {
-  content:">";
-  color: #789922;
+.funfacts li::before {
+  content: ">";
+}
+
+.blurb {
+  font-size: 18px;
+  margin-bottom: 1.6em !important;
+}
+
+/* favorites card, old forum/MAL profile style */
+.card {
+  max-width: 440px;
+  margin: 0;
+  padding: 2px 20px 10px;
+  min-width: 0;
+  border: 1px solid rgba(0, 120, 200, 0.55);
+  background: rgba(0, 0, 12, 0.55);
+}
+
+.card-title {
+  padding: 0 8px;
+  font: 28px/1 var(--pixel);
+  color: var(--blue);
+}
+
+.card-title .jp,
+.favs .jp {
+  margin-left: 8px;
+  font: 11px/1 var(--jp);
+  letter-spacing: 1px;
+  color: var(--jp-dim);
+}
+
+.favs {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 22px;
+  margin: 0;
+}
+
+.favs dt,
+.favs dd {
+  margin: 0;
+  padding: 5px 0;
+  border-bottom: 1px dashed rgba(0, 120, 200, 0.2);
+}
+
+.favs dt:last-of-type,
+.favs dd:last-of-type {
+  border-bottom: none;
+}
+
+.favs dt {
+  font: 24px/1.3 var(--pixel);
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.favs dd {
+  line-height: 31px;
+}
+
+/* about page: two columns so it fits one screen */
+.cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 48px;
 }
 
 .backup-email {
-  font-family: haxrcorp, monospace;
+  font-family: var(--pixel);
   font-size: 20px;
   color: rgb(0, 200, 255);
-  text-shadow:
-  0 0 5px rgba(0, 200, 255, 0.5),
-  0 0 10px rgba(0, 200, 255, 0.3);
   background-color: rgba(0, 40, 80, 0.3);
-  padding: 4px 8px;
-  border-left: 3px solid rgb(0, 160, 250);
-  display: inline-block;
+  padding: 2px 8px;
+  border-left: 3px solid var(--blue);
+  white-space: nowrap;
   letter-spacing: 1px;
 }
 
 .backup-email .email-sep {
   color: rgb(0, 120, 180);
-  opacity: 0.7;
   font-size: 16px;
 }
 
@@ -113,109 +333,16 @@ color:hotpink;
   font-weight: bold;
 }
 
-
-/*--------------------------
- *
- *       HEADER STUFF
- *
- - *-------------------------*/
-
-.header {
-  margin-left: 50px;
-  margin-top: 25px;
-  display: block;
-}
-
-.header h1 {
-  color: rgb(0, 160, 250);
-  font-family: haxrcorp, monospace;
-  font-size: 40px;
-}
-
-.navlinks {
-  margin: 5px;
-}
-
-.greeting {
-  font-size: 32px;
-  color: rgb(0, 120, 255);
-  font-family: haxrcorp, monospace;
-}
-
-.navlinks ul {
-  align-items: center;
-  justify-content: center;
-  list-style: none;
-  display: flex;
-}
-
-.navlinks ul a {
-  display: inline-block;
-  font-family: haxrcorp, monospace;
-  font-style: none;
-  font-size: 25px;
-  max-width: 25vh;
-  color: white;
-  background-color: rgb(0,0,20);
-  border:rgb(40, 120, 200);
-  border-width: 2px;
-  border-style: solid;
-  padding: 10px;
-  text-decoration: none;
-}
-
-.navlinks ul a:hover {
-  text-decoration: underline;
-  color: rgb(0, 120, 255);
-}
-
-.navlinks ul li {
-  padding: 5px;
-}
-
-
-/*--------------------------
- *
- *       FOOTER STUFF
- *
- - *-------------------------*/
-
-.footer {
-  font-family: haxrcorp, monospace;
-  font-size: 18px;
-  position: absolute;
-  bottom: 1vh;
-  left: 5vw;
-}
-
-.footer a {
-  color: rgb(0, 120, 255);
-  text-decoration: none;
-}
-
-.footer a:hover {
-  text-decoration: underline;
-}
-
-.inline-link {
-  color: rgb(0, 160, 250);
-  text-decoration: none;
-  font-family: haxrcorp, monospace;
-}
-
-.inline-link:hover {
-  text-decoration: underline;
-  color: rgb(0, 220, 255);
-}
-
 .linklist {
   list-style: none;
   padding: 0;
+  margin: 0;
+  max-width: 560px;
 }
 
 .linklist li {
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(0, 120, 200, 0.2);
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 120, 200, 0.25);
 }
 
 .linklist li:last-child {
@@ -223,21 +350,27 @@ color:hotpink;
 }
 
 .linklist a {
-  font-family: haxrcorp, monospace;
-  font-size: 22px;
-  color: rgb(0, 160, 250);
-  text-decoration: none;
-}
-
-.linklist a:hover {
-  text-decoration: underline;
-  color: rgb(0, 220, 255);
+  font: 28px/1.2 var(--pixel);
 }
 
 .link-desc {
-  font-size: 14px;
-  color: #888;
+  display: block;
+  font-size: 15px;
+  color: var(--muted);
 }
+
+.mobile-license {
+  display: none;
+  margin: 40px 0 0;
+  font: 15px/1.35 var(--pixel);
+  color: var(--muted);
+}
+
+/*--------------------------
+ *
+ *       MASCOT (unchanged)
+ *
+ - *-------------------------*/
 
 .mascot {
   position: fixed;
@@ -246,4 +379,74 @@ color:hotpink;
   z-index: -1;
   max-height: 30vh;
   min-height: 20vh;
+}
+
+/*--------------------------
+ *
+ *       SMALL SCREENS
+ *
+ - *-------------------------*/
+
+@media (max-width: 1100px) {
+  .cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  body::before {
+    background:
+      linear-gradient(rgba(0, 0, 0, 0.68), rgba(0, 0, 0, 0.68)),
+      url("../img/background.jpg") center top / cover no-repeat;
+  }
+
+  .sidebar {
+    position: static;
+    width: auto;
+    padding: 20px 16px 16px;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 120, 200, 0.5);
+  }
+
+  .greeting {
+    font-size: 20px;
+  }
+
+  .site-name {
+    margin-top: 6px;
+    font-size: 48px;
+  }
+
+  .nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 22px;
+    margin-top: 16px;
+  }
+
+  .nav li + li {
+    margin-top: 0;
+  }
+
+  .nav a {
+    font-size: 24px;
+    gap: 6px;
+  }
+
+  .license {
+    display: none;
+  }
+
+  .main {
+    margin-left: 0;
+    padding: 28px 16px 40px;
+  }
+
+  h1 {
+    font-size: 38px;
+  }
+
+  .mobile-license {
+    display: block;
+  }
 }
